@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { ArrowLeft, MapPin, DollarSign, Clock, Building, Mail, Phone, User, FileText } from 'lucide-react-native';
 import * as MailComposer from 'expo-mail-composer';
@@ -16,10 +16,32 @@ export default function JobDetails() {
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
     fetchJobDetails();
+    checkIfApplied();
+    fetchUserProfile();
   }, [id]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const docRef = doc(db, 'workers', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const profile = docSnap.data();
+          setUserProfile(profile);
+          setApplicantName(profile.name || '');
+          setApplicantPhone(profile.phone || '');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const fetchJobDetails = async () => {
     try {
@@ -31,6 +53,24 @@ export default function JobDetails() {
       console.error('Error fetching job details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkIfApplied = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const applicationsQuery = query(
+        collection(db, 'applications'),
+        where('jobId', '==', id),
+        where('applicantId', '==', user.uid)
+      );
+      
+      const snapshot = await getDocs(applicationsQuery);
+      setHasApplied(!snapshot.empty);
+    } catch (error) {
+      console.error('Error checking application status:', error);
     }
   };
 
@@ -53,6 +93,7 @@ export default function JobDetails() {
         additionalInfo,
         appliedAt: new Date(),
         applicantId: auth.currentUser?.uid,
+        status: 'pending',
       });
 
       // Send email to organization
@@ -71,15 +112,19 @@ Additional Information: ${additionalInfo || 'None provided'}
 Applied on: ${new Date().toLocaleDateString()}
       `;
 
-      await MailComposer.composeAsync({
-        recipients: [job.email],
-        subject: `Job Application - ${job.category}`,
-        body: emailBody,
-      });
+      try {
+        await MailComposer.composeAsync({
+          recipients: [job.email],
+          subject: `Job Application - ${job.category}`,
+          body: emailBody,
+        });
+      } catch (emailError) {
+        console.log('Email composer not available, but application was saved');
+      }
 
-      Alert.alert('Success', 'Your application has been submitted!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      setHasApplied(true);
+      setShowApplicationForm(false);
+      Alert.alert('Success', 'Your application has been submitted successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to submit application. Please try again.');
     } finally {
@@ -158,7 +203,12 @@ Applied on: ${new Date().toLocaleDateString()}
           </View>
         </View>
 
-        {!showApplicationForm ? (
+        {hasApplied ? (
+          <View style={styles.appliedContainer}>
+            <Text style={styles.appliedText}>✓ Applied</Text>
+            <Text style={styles.appliedSubtext}>You have already applied for this job</Text>
+          </View>
+        ) : !showApplicationForm ? (
           <TouchableOpacity 
             style={styles.applyButton}
             onPress={() => setShowApplicationForm(true)}
@@ -339,6 +389,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  appliedContainer: {
+    backgroundColor: '#D1FAE5',
+    margin: 20,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  appliedText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#065F46',
+    marginBottom: 4,
+  },
+  appliedSubtext: {
+    fontSize: 14,
+    color: '#047857',
   },
   applicationForm: {
     backgroundColor: '#FFFFFF',

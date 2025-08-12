@@ -1,35 +1,67 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
-import { Search, MapPin, Clock, DollarSign } from 'lucide-react-native';
+import { Search, MapPin, Clock, DollarSign, User, Mail, Phone } from 'lucide-react-native';
 
 const JOB_CATEGORIES = [
   'Electrician', 'Plumber', 'Mechanic', 'Cook', 'Peon', 
   'Driver', 'House Keeping', 'Construction Site Workers', 'Security Guard'
 ];
 
-export default function Jobs() {
+export default function MainScreen() {
   const [jobs, setJobs] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [userType, setUserType] = useState(null);
 
   useEffect(() => {
-    fetchJobs();
-  }, [selectedCategory]);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          // Check if user is a worker
+          let docRef = doc(db, 'workers', user.uid);
+          let docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            setUserType('worker');
+            fetchJobs();
+          } else {
+            // Check if user is an organization
+            docRef = doc(db, 'organizations', user.uid);
+            docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setUserType('organization');
+              fetchApplications();
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user type:', error);
+        }
+      }
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (userType === 'worker') {
+      fetchJobs();
+    }
+  }, [selectedCategory, userType]);
 
   const fetchJobs = async () => {
     try {
       let jobsQuery;
       if (selectedCategory === 'All') {
-        jobsQuery = query(collection(db, 'jobs'), orderBy('createdAt', 'desc'));
+        jobsQuery = collection(db, 'jobs');
       } else {
-        jobsQuery = query(
-          collection(db, 'jobs'), 
-          where('category', '==', selectedCategory),
-          orderBy('createdAt', 'desc')
-        );
+        jobsQuery = query(collection(db, 'jobs'), where('category', '==', selectedCategory));
       }
       
       const snapshot = await getDocs(jobsQuery);
@@ -37,9 +69,56 @@ export default function Jobs() {
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Sort by creation date (newest first)
+      jobsData.sort((a, b) => {
+        const dateA = a.createdAt?.toDate() || new Date(0);
+        const dateB = b.createdAt?.toDate() || new Date(0);
+        return dateB - dateA;
+      });
+      
       setJobs(jobsData);
     } catch (error) {
       console.error('Error fetching jobs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchApplications = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Get jobs posted by this organization
+      const jobsQuery = query(collection(db, 'jobs'), where('postedBy', '==', user.uid));
+      const jobsSnapshot = await getDocs(jobsQuery);
+      const jobIds = jobsSnapshot.docs.map(doc => doc.id);
+
+      if (jobIds.length === 0) {
+        setApplications([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get applications for these jobs
+      const applicationsQuery = query(collection(db, 'applications'), where('jobId', 'in', jobIds));
+      const applicationsSnapshot = await getDocs(applicationsQuery);
+      const applicationsData = applicationsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Sort by application date (newest first)
+      applicationsData.sort((a, b) => {
+        const dateA = a.appliedAt?.toDate() || new Date(0);
+        const dateB = b.appliedAt?.toDate() || new Date(0);
+        return dateB - dateA;
+      });
+
+      setApplications(applicationsData);
+    } catch (error) {
+      console.error('Error fetching applications:', error);
     } finally {
       setLoading(false);
     }
@@ -76,6 +155,83 @@ export default function Jobs() {
     </TouchableOpacity>
   );
 
+  const renderApplicationCard = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.applicationCard}
+      onPress={() => router.push(`/application-details/${item.id}`)}
+    >
+      <View style={styles.applicationHeader}>
+        <Text style={styles.jobTitle}>{item.jobTitle}</Text>
+        <View style={[styles.statusBadge, 
+          item.status === 'accepted' && styles.acceptedBadge,
+          item.status === 'rejected' && styles.rejectedBadge
+        ]}>
+          <Text style={[styles.statusText,
+            item.status === 'accepted' && styles.acceptedText,
+            item.status === 'rejected' && styles.rejectedText
+          ]}>
+            {item.status || 'Pending'}
+          </Text>
+        </View>
+      </View>
+      
+      <View style={styles.applicantInfo}>
+        <View style={styles.infoRow}>
+          <User size={16} color="#6B7280" />
+          <Text style={styles.infoText}>{item.applicantName}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Phone size={16} color="#6B7280" />
+          <Text style={styles.infoText}>{item.applicantPhone}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Clock size={16} color="#6B7280" />
+          <Text style={styles.infoText}>{item.experience} years experience</Text>
+        </View>
+      </View>
+      
+      <View style={styles.applicationFooter}>
+        <Text style={styles.appliedDate}>
+          Applied: {new Date(item.appliedAt?.toDate()).toLocaleDateString()}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (userType === 'organization') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Job Applications</Text>
+          <Text style={styles.headerSubtitle}>Manage applications for your posted jobs</Text>
+        </View>
+
+        {applications.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No applications yet</Text>
+            <Text style={styles.emptySubtext}>Applications will appear here when job seekers apply to your posted jobs</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={applications}
+            renderItem={renderApplicationCard}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.applicationsList}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -105,9 +261,10 @@ export default function Jobs() {
         ))}
       </ScrollView>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text>Loading jobs...</Text>
+      {jobs.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No jobs available</Text>
+          <Text style={styles.emptySubtext}>Check back later for new opportunities</Text>
         </View>
       ) : (
         <FlatList
@@ -171,7 +328,21 @@ const styles = StyleSheet.create({
   jobsList: {
     padding: 20,
   },
+  applicationsList: {
+    padding: 20,
+  },
   jobCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  applicationCard: {
     backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
@@ -188,6 +359,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  applicationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   jobTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -203,6 +380,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#16A34A',
   },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  acceptedBadge: {
+    backgroundColor: '#D1FAE5',
+  },
+  rejectedBadge: {
+    backgroundColor: '#FEE2E2',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    textTransform: 'capitalize',
+  },
+  acceptedText: {
+    color: '#065F46',
+  },
+  rejectedText: {
+    color: '#991B1B',
+  },
   organizationName: {
     fontSize: 14,
     color: '#6B7280',
@@ -214,10 +415,28 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
   },
+  applicantInfo: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#374151',
+  },
   jobFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  applicationFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 8,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -237,9 +456,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
+  appliedDate: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

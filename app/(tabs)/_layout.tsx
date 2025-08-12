@@ -1,7 +1,46 @@
+import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { Briefcase, User, Plus, Search } from 'lucide-react-native';
+import { Briefcase, User, Plus, Search, FileText } from 'lucide-react-native';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase-config';
 
 export default function TabLayout() {
+  const [userType, setUserType] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          // Check if user is a worker
+          let docRef = doc(db, 'workers', user.uid);
+          let docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            setUserType('worker');
+          } else {
+            // Check if user is an organization
+            docRef = doc(db, 'organizations', user.uid);
+            docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setUserType('organization');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user type:', error);
+        }
+      }
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  if (loading) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -20,21 +59,34 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Jobs',
+          title: userType === 'organization' ? 'Applications' : 'Jobs',
           tabBarIcon: ({ size, color }) => (
             <Search size={size} color={color} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="post-job"
-        options={{
-          title: 'Post Job',
-          tabBarIcon: ({ size, color }) => (
-            <Plus size={size} color={color} />
-          ),
-        }}
-      />
+      {userType === 'organization' && (
+        <Tabs.Screen
+          name="post-job"
+          options={{
+            title: 'Post Job',
+            tabBarIcon: ({ size, color }) => (
+              <Plus size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {userType === 'worker' && (
+        <Tabs.Screen
+          name="applied-jobs"
+          options={{
+            title: 'Applied Jobs',
+            tabBarIcon: ({ size, color }) => (
+              <FileText size={size} color={color} />
+            ),
+          }}
+        />
+      )}
       <Tabs.Screen
         name="profile"
         options={{
