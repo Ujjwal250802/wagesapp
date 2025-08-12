@@ -1,35 +1,54 @@
-New Job Application
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { auth, db } from '../../firebase-config';
+import { ArrowLeft, DollarSign, MapPin, Clock, Building, Mail, Phone } from 'lucide-react-native';
 
-Job Category: ${job.category}
-Organization: ${job.organizationName}
+export default function JobDetails() {
+  const { id } = useLocalSearchParams();
+  const [job, setJob] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [hasApplied, setHasApplied] = useState(false);
 
-Applicant Details:
-Name: ${applicantName}
-Phone: ${applicantPhone}
-Experience: ${experience} years
-Additional Information: ${additionalInfo || 'None provided'}
+  useEffect(() => {
+    fetchJobDetails();
+    checkApplicationStatus();
+  }, [id]);
 
-Applied on: ${new Date().toLocaleDateString()}
-      `;
-
-      try {
-        await MailComposer.composeAsync({
-          recipients: [job.email],
-          subject: `Job Application - ${job.category}`,
-          body: emailBody,
-        });
-      } catch (emailError) {
-        console.log('Email composer not available, but application was saved');
+  const fetchJobDetails = async () => {
+    try {
+      const jobDoc = await getDoc(doc(db, 'jobs', id));
+      if (jobDoc.exists()) {
+        setJob({ id: jobDoc.id, ...jobDoc.data() });
       }
-
-      setHasApplied(true);
-      setShowApplicationForm(false);
-      Alert.alert('Success', 'Your application has been submitted successfully!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit application. Please try again.');
+      console.error('Error fetching job details:', error);
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
+  };
+
+  const checkApplicationStatus = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const applicationsQuery = query(
+        collection(db, 'applications'),
+        where('jobId', '==', id),
+        where('applicantId', '==', user.uid)
+      );
+      
+      const querySnapshot = await getDocs(applicationsQuery);
+      setHasApplied(!querySnapshot.empty);
+    } catch (error) {
+      console.error('Error checking application status:', error);
+    }
+  };
+
+  const handleApplyPress = () => {
+    router.push(`/apply-job/${id}`);
   };
 
   if (loading) {
@@ -108,82 +127,13 @@ Applied on: ${new Date().toLocaleDateString()}
             <Text style={styles.appliedText}>✓ Applied</Text>
             <Text style={styles.appliedSubtext}>You have already applied for this job</Text>
           </View>
-        ) : !showApplicationForm ? (
+        ) : (
           <TouchableOpacity 
             style={styles.applyButton}
-            onPress={() => setShowApplicationForm(true)}
+            onPress={handleApplyPress}
           >
             <Text style={styles.applyButtonText}>Apply for this Job</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={styles.applicationForm}>
-            <Text style={styles.formTitle}>Application Form</Text>
-            
-            <View style={styles.inputContainer}>
-              <User size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Your Full Name"
-                value={applicantName}
-                onChangeText={setApplicantName}
-                autoCapitalize="words"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Phone size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Your Phone Number"
-                value={applicantPhone}
-                onChangeText={setApplicantPhone}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Clock size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Years of Experience"
-                value={experience}
-                onChangeText={setExperience}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={[styles.inputContainer, styles.textAreaContainer]}>
-              <FileText size={20} color="#6B7280" style={[styles.inputIcon, styles.textAreaIcon]} />
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Additional Information (optional)"
-                value={additionalInfo}
-                onChangeText={setAdditionalInfo}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={styles.formActions}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowApplicationForm(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.submitButton}
-                onPress={handleApplyJob}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>
-                  {submitting ? 'Submitting...' : 'Submit Application'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         )}
       </ScrollView>
     </View>
@@ -306,78 +256,6 @@ const styles = StyleSheet.create({
   appliedSubtext: {
     fontSize: 14,
     color: '#047857',
-  },
-  applicationForm: {
-    backgroundColor: '#FFFFFF',
-    margin: 20,
-    padding: 20,
-    borderRadius: 12,
-    gap: 16,
-  },
-  formTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#F9FAFB',
-  },
-  textAreaContainer: {
-    alignItems: 'flex-start',
-    paddingTop: 16,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  textAreaIcon: {
-    marginTop: 4,
-  },
-  input: {
-    flex: 1,
-    height: 56,
-    fontSize: 16,
-    color: '#111827',
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  formActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  submitButton: {
-    flex: 2,
-    backgroundColor: '#16A34A',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,

@@ -59,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: userType === 'organization' ? 'Applications' : 'Jobs',
+          title: userType === 'organization' ? 'Applications' : 'Find Jobs',
           tabBarIcon: ({ size, color }) => (
             <Search size={size} color={color} />
           ),
@@ -84,6 +84,23 @@ export default function TabLayout() {
             tabBarIcon: ({ size, color }) => (
               <FileText size={size} color={color} />
             ),
+          }}
+        />
+      )}
+      {/* Hide post-job and applied-jobs from the opposite user types */}
+      {userType === 'worker' && (
+        <Tabs.Screen
+          name="post-job"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      )}
+      {userType === 'organization' && (
+        <Tabs.Screen
+          name="applied-jobs"
+          options={{
+            href: null, // This hides the tab
           }}
         />
       )}
