@@ -3,7 +3,7 @@
 
 export const GOOGLE_MAPS_CONFIG = {
   // Get API key from environment variables
-  apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY',
+  apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDAI4wqLhAScKjbEP0hfDe0QKibC-jJn1k',
   
   // Default map settings
   defaultRegion: {
