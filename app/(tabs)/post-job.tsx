@@ -22,12 +22,15 @@ export default function PostJob() {
   const [loading, setLoading] = useState(false);
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
   const [coordinates, setCoordinates] = useState(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   const getCurrentLocation = async () => {
+    setGettingLocation(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'Location permission is required to use current location');
+        setUseCurrentLocation(false);
         return;
       }
 
@@ -45,9 +48,14 @@ export default function PostJob() {
           latitude: currentLocation.coords.latitude,
           longitude: currentLocation.coords.longitude,
         });
+        Alert.alert('Success', 'Current location added successfully!');
       }
     } catch (error) {
+      console.error('Location error:', error);
       Alert.alert('Error', 'Failed to get current location');
+      setUseCurrentLocation(false);
+    } finally {
+      setGettingLocation(false);
     }
   };
 
@@ -164,19 +172,31 @@ export default function PostJob() {
         <View style={styles.locationToggleContainer}>
           <View style={styles.toggleRow}>
             <Navigation size={20} color="#6B7280" />
-            <Text style={styles.toggleLabel}>Use Current Location</Text>
+            <Text style={styles.toggleLabel}>
+              {gettingLocation ? 'Getting location...' : 'Use Current Location'}
+            </Text>
             <Switch
               value={useCurrentLocation}
               onValueChange={(value) => {
                 setUseCurrentLocation(value);
                 if (value) {
                   getCurrentLocation();
+                } else {
+                  setCoordinates(null);
                 }
               }}
+              disabled={gettingLocation}
               trackColor={{ false: '#D1D5DB', true: '#2563EB' }}
               thumbColor={useCurrentLocation ? '#FFFFFF' : '#F3F4F6'}
             />
           </View>
+          {coordinates && (
+            <View style={styles.coordinatesDisplay}>
+              <Text style={styles.coordinatesText}>
+                📍 Location saved: {coordinates.latitude.toFixed(4)}, {coordinates.longitude.toFixed(4)}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.inputContainer}>
@@ -312,5 +332,16 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#374151',
+  },
+  coordinatesDisplay: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 6,
+  },
+  coordinatesText: {
+    fontSize: 12,
+    color: '#166534',
+    fontFamily: 'monospace',
   },
 });

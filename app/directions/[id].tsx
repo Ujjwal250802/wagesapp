@@ -3,9 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Platform }
 import { useLocalSearchParams, router } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase-config';
-import { ArrowLeft, Navigation, Clock, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -85,24 +84,33 @@ export default function Directions() {
     }
 
     const { latitude, longitude } = job.coordinates;
-    const url = Platform.select({
-      ios: `maps:0,0?q=${latitude},${longitude}`,
-      android: `geo:0,0?q=${latitude},${longitude}`,
-      web: `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`,
-    });
-
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    
     if (Platform.OS === 'web') {
       window.open(url, '_blank');
     } else {
-      // For mobile, you would use Linking.openURL(url)
       Alert.alert('Open in Maps', 'This would open in your default maps app');
+    }
+  };
+
+  const openGoogleMaps = () => {
+    if (!job?.coordinates) {
+      Alert.alert('Error', 'Job location coordinates not available');
+      return;
+    }
+
+    const { latitude, longitude } = job.coordinates;
+    const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank');
     }
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Loading directions...</Text>
+        <Text style={styles.loadingText}>Loading directions...</Text>
       </View>
     );
   }
@@ -110,7 +118,13 @@ export default function Directions() {
   if (!job) {
     return (
       <View style={styles.errorContainer}>
-        <Text>Job not found</Text>
+        <Text style={styles.errorText}>Job not found</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -119,7 +133,7 @@ export default function Directions() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={styles.headerBackButton}
           onPress={() => router.back()}
         >
           <ArrowLeft size={24} color="#FFFFFF" />
@@ -127,36 +141,26 @@ export default function Directions() {
         <Text style={styles.headerTitle}>Directions</Text>
       </View>
 
-      {job.coordinates && userLocation ? (
-        <MapView
-          style={styles.map}
-          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-          initialRegion={{
-            latitude: (userLocation.latitude + job.coordinates.latitude) / 2,
-            longitude: (userLocation.longitude + job.coordinates.longitude) / 2,
-            latitudeDelta: Math.abs(userLocation.latitude - job.coordinates.latitude) * 2 + 0.01,
-            longitudeDelta: Math.abs(userLocation.longitude - job.coordinates.longitude) * 2 + 0.01,
-          }}
-        >
-          <Marker
-            coordinate={userLocation}
-            title="Your Location"
-            pinColor="blue"
-          />
-          <Marker
-            coordinate={job.coordinates}
-            title={job.organizationName}
-            description={job.location}
-            pinColor="red"
-          />
-        </MapView>
-      ) : (
-        <View style={styles.noMapContainer}>
-          <MapPin size={48} color="#D1D5DB" />
-          <Text style={styles.noMapText}>Map not available</Text>
-          <Text style={styles.noMapSubtext}>Location coordinates not found</Text>
+      <View style={styles.mapPlaceholder}>
+        <View style={styles.mapContent}>
+          <MapPin size={48} color="#2563EB" />
+          <Text style={styles.mapTitle}>Interactive Map</Text>
+          <Text style={styles.mapSubtitle}>
+            {job.coordinates ? 'Location coordinates available' : 'Address only available'}
+          </Text>
+          
+          {job.coordinates && userLocation && (
+            <View style={styles.coordinatesInfo}>
+              <Text style={styles.coordinateText}>
+                From: {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+              </Text>
+              <Text style={styles.coordinateText}>
+                To: {job.coordinates.latitude.toFixed(4)}, {job.coordinates.longitude.toFixed(4)}
+              </Text>
+            </View>
+          )}
         </View>
-      )}
+      </View>
 
       <View style={styles.infoContainer}>
         <View style={styles.jobInfo}>
@@ -187,13 +191,23 @@ export default function Directions() {
           </View>
         )}
 
-        <TouchableOpacity 
-          style={styles.openMapsButton}
-          onPress={openInMaps}
-        >
-          <Navigation size={20} color="#FFFFFF" />
-          <Text style={styles.openMapsButtonText}>Open in Maps</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.directionsButton}
+            onPress={openInMaps}
+          >
+            <Navigation size={20} color="#FFFFFF" />
+            <Text style={styles.directionsButtonText}>Get Directions</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.viewOnMapButton}
+            onPress={openGoogleMaps}
+          >
+            <ExternalLink size={20} color="#2563EB" />
+            <Text style={styles.viewOnMapButtonText}>View on Google Maps</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -212,7 +226,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: '#2563EB',
   },
-  backButton: {
+  headerBackButton: {
     padding: 8,
     marginRight: 16,
   },
@@ -221,25 +235,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  map: {
+  mapPlaceholder: {
     flex: 1,
-  },
-  noMapContainer: {
-    flex: 1,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    margin: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
   },
-  noMapText: {
+  mapContent: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  mapTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#374151',
     marginTop: 16,
+    marginBottom: 8,
   },
-  noMapSubtext: {
+  mapSubtitle: {
     fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 4,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  coordinatesInfo: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  coordinateText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'monospace',
+    marginBottom: 4,
   },
   infoContainer: {
     backgroundColor: '#FFFFFF',
@@ -274,6 +309,7 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: 14,
     color: '#374151',
+    flex: 1,
   },
   distanceInfo: {
     flexDirection: 'row',
@@ -297,7 +333,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
-  openMapsButton: {
+  buttonContainer: {
+    gap: 12,
+  },
+  directionsButton: {
     backgroundColor: '#16A34A',
     paddingVertical: 16,
     borderRadius: 12,
@@ -306,8 +345,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  openMapsButtonText: {
+  directionsButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  viewOnMapButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#2563EB',
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  viewOnMapButtonText: {
+    color: '#2563EB',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -315,10 +370,33 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#EF4444',
+    marginBottom: 20,
+  },
+  backButton: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
