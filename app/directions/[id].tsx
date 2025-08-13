@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Platform, 
 import { useLocalSearchParams, router } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase-config';
-import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink, Car, Walk } from 'lucide-react-native';
+import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink, Car, Wallet as Walk } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import * as Linking from 'expo-linking';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
