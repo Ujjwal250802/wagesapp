@@ -116,7 +116,10 @@ Applied on: ${new Date().toLocaleDateString()}
         [
           {
             text: 'OK',
-            onPress: () => router.back()
+            onPress: () => {
+              router.back();
+              router.back(); // Go back to jobs list
+            }
           }
         ]
       );

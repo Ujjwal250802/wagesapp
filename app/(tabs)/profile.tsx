@@ -4,7 +4,7 @@ import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
-import { User, LogOut, CreditCard as Edit, Briefcase } from 'lucide-react-native';
+import { User, LogOut, Edit, Briefcase, Building, Mail, Phone } from 'lucide-react-native';
 
 export default function Profile() {
   const [userProfile, setUserProfile] = useState(null);
@@ -59,28 +59,57 @@ export default function Profile() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.profileImageContainer}>
-          <User size={40} color="#FFFFFF" />
+        <View style={styles.profileSection}>
+          <View style={styles.profileImageContainer}>
+            {userProfile?.profileImage ? (
+              <Image source={{ uri: userProfile.profileImage }} style={styles.profileImage} />
+            ) : (
+              <User size={40} color="#FFFFFF" />
+            )}
+          </View>
+          <Text style={styles.profileName}>
+            {userProfile?.name || userProfile?.organizationName || 'User'}
+          </Text>
+          <Text style={styles.profileEmail}>{userProfile?.email}</Text>
+          <Text style={styles.userType}>
+            {userProfile?.userType === 'worker' ? 'Job Seeker' : 'Employer'}
+          </Text>
         </View>
-        <Text style={styles.profileName}>
-          {userProfile?.name || userProfile?.organizationName || 'User'}
-        </Text>
-        <Text style={styles.profileEmail}>{userProfile?.email}</Text>
-        <Text style={styles.userType}>
-          {userProfile?.userType === 'worker' ? 'Job Seeker' : 'Employer'}
-        </Text>
       </View>
 
       <View style={styles.content}>
-        {userProfile?.userType === 'worker' && (
-          <TouchableOpacity style={styles.actionButton}>
-            <Briefcase size={20} color="#2563EB" />
-            <Text style={styles.actionButtonText}>Look for Jobs</Text>
-          </TouchableOpacity>
+        {userProfile?.bio && (
+          <View style={styles.bioSection}>
+            <Text style={styles.bioTitle}>About</Text>
+            <Text style={styles.bioText}>{userProfile.bio}</Text>
+          </View>
         )}
 
-        <TouchableOpacity style={styles.actionButton}>
-          <Edit size={20} color="#6B7280" />
+        <View style={styles.infoSection}>
+          <Text style={styles.sectionTitle}>Contact Information</Text>
+          <View style={styles.infoItem}>
+            <Mail size={16} color="#6B7280" />
+            <Text style={styles.infoText}>{userProfile?.email}</Text>
+          </View>
+          {userProfile?.phone && (
+            <View style={styles.infoItem}>
+              <Phone size={16} color="#6B7280" />
+              <Text style={styles.infoText}>{userProfile.phone}</Text>
+            </View>
+          )}
+          {userProfile?.userType === 'organization' && userProfile?.contactPerson && (
+            <View style={styles.infoItem}>
+              <User size={16} color="#6B7280" />
+              <Text style={styles.infoText}>{userProfile.contactPerson}</Text>
+            </View>
+          )}
+        </View>
+
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => router.push('/edit-profile')}
+        >
+          <Edit size={20} color="#2563EB" />
           <Text style={styles.actionButtonText}>Edit Profile</Text>
         </TouchableOpacity>
 
@@ -108,6 +137,8 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 40,
     paddingHorizontal: 20,
+  },
+  profileSection: {
     alignItems: 'center',
   },
   profileImageContainer: {
@@ -118,6 +149,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   profileName: {
     fontSize: 24,
@@ -142,6 +179,45 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
+  bioSection: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  bioTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  bioText: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  infoSection: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#374151',
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -157,7 +233,7 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 16,
-    color: '#374151',
+    color: '#2563EB',
     fontWeight: '500',
   },
   signOutButton: {

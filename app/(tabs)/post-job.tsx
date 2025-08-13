@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Switch } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
-import { Building, Mail, Phone, MapPin, DollarSign, FileText, Briefcase } from 'lucide-react-native';
+import { Building, Mail, Phone, MapPin, DollarSign, FileText, Briefcase, Navigation } from 'lucide-react-native';
+import * as Location from 'expo-location';
 
 const JOB_CATEGORIES = [
   'Electrician', 'Plumber', 'Mechanic', 'Cook', 'Peon', 
@@ -19,6 +20,36 @@ export default function PostJob() {
   const [location, setLocation] = useState('');
   const [salary, setSalary] = useState('');
   const [loading, setLoading] = useState(false);
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+  const [coordinates, setCoordinates] = useState(null);
+
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Location permission is required to use current location');
+        return;
+      }
+
+      const currentLocation = await Location.getCurrentPositionAsync({});
+      const address = await Location.reverseGeocodeAsync({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+      });
+
+      if (address.length > 0) {
+        const addr = address[0];
+        const fullAddress = `${addr.street || ''} ${addr.city || ''} ${addr.region || ''} ${addr.postalCode || ''}`.trim();
+        setLocation(fullAddress);
+        setCoordinates({
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude,
+        });
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to get current location');
+    }
+  };
 
   const handlePostJob = async () => {
     if (!organizationName || !email || !phone || !category || !description || !location || !salary) {
@@ -36,6 +67,7 @@ export default function PostJob() {
         description,
         location,
         salary: parseInt(salary),
+        coordinates: coordinates,
         createdAt: new Date(),
         postedBy: auth.currentUser?.uid || 'anonymous',
       });
@@ -58,6 +90,8 @@ export default function PostJob() {
     setDescription('');
     setLocation('');
     setSalary('');
+    setUseCurrentLocation(false);
+    setCoordinates(null);
   };
 
   return (
@@ -125,6 +159,24 @@ export default function PostJob() {
             onChangeText={setLocation}
             autoCapitalize="words"
           />
+        </View>
+
+        <View style={styles.locationToggleContainer}>
+          <View style={styles.toggleRow}>
+            <Navigation size={20} color="#6B7280" />
+            <Text style={styles.toggleLabel}>Use Current Location</Text>
+            <Switch
+              value={useCurrentLocation}
+              onValueChange={(value) => {
+                setUseCurrentLocation(value);
+                if (value) {
+                  getCurrentLocation();
+                }
+              }}
+              trackColor={{ false: '#D1D5DB', true: '#2563EB' }}
+              thumbColor={useCurrentLocation ? '#FFFFFF' : '#F3F4F6'}
+            />
+          </View>
         </View>
 
         <View style={styles.inputContainer}>
@@ -242,5 +294,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  locationToggleContainer: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  toggleLabel: {
+    flex: 1,
+    fontSize: 16,
+    color: '#374151',
   },
 });

@@ -3,22 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert 
 import { useLocalSearchParams, router } from 'expo-router';
 import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
-import { ArrowLeft, User, Phone, Clock, FileText, Briefcase, MapPin, DollarSign, Building, Mail } from 'lucide-react-native';
+import { ArrowLeft, User, Phone, Clock, FileText, Briefcase, MapPin, DollarSign, Building, Mail, Navigation } from 'lucide-react-native';
 
 export default function JobDetails() {
   const { id } = useLocalSearchParams();
   const [job, setJob] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
-  const [showApplicationForm, setShowApplicationForm] = useState(false);
-  
-  // Form fields
-  const [applicantName, setApplicantName] = useState('');
-  const [applicantPhone, setApplicantPhone] = useState('');
-  const [experience, setExperience] = useState('');
-  const [additionalInfo, setAdditionalInfo] = useState('');
 
   useEffect(() => {
     fetchJobAndUserData();
@@ -53,8 +45,6 @@ export default function JobDetails() {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setUserProfile(userData);
-        setApplicantName(userData.name || '');
-        setApplicantPhone(userData.phone || '');
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -64,44 +54,8 @@ export default function JobDetails() {
     }
   };
 
-  const handleSubmitApplication = async () => {
-    if (!applicantName || !applicantPhone || !experience) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        Alert.alert('Error', 'You must be logged in to apply');
-        return;
-      }
-
-      // Save application to Firestore
-      await addDoc(collection(db, 'applications'), {
-        jobId: id,
-        jobTitle: job.category,
-        organizationName: job.organizationName,
-        applicantId: user.uid,
-        applicantName: applicantName,
-        applicantPhone: applicantPhone,
-        applicantEmail: user.email,
-        experience: parseInt(experience),
-        additionalInfo: additionalInfo,
-        appliedAt: new Date(),
-        status: 'pending',
-      });
-
-      setHasApplied(true);
-      setShowApplicationForm(false);
-      Alert.alert('Success', 'Your application has been submitted successfully!');
-    } catch (error) {
-      console.error('Error submitting application:', error);
-      Alert.alert('Error', 'Failed to submit application. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleGetDirections = () => {
+    router.push(`/directions/${id}`);
   };
 
   if (loading) {
@@ -189,97 +143,32 @@ export default function JobDetails() {
           </View>
         </View>
 
-        {showApplicationForm && (
-          <View style={styles.applicationForm}>
-            <Text style={styles.formTitle}>Application Form</Text>
-            
-            <View style={styles.inputContainer}>
-              <User size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Your Full Name *"
-                value={applicantName}
-                onChangeText={setApplicantName}
-                autoCapitalize="words"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Phone size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Your Phone Number *"
-                value={applicantPhone}
-                onChangeText={setApplicantPhone}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Clock size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Years of Experience *"
-                value={experience}
-                onChangeText={setExperience}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={[styles.inputContainer, styles.textAreaContainer]}>
-              <FileText size={20} color="#6B7280" style={[styles.inputIcon, styles.textAreaIcon]} />
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Additional Information (optional)"
-                value={additionalInfo}
-                onChangeText={setAdditionalInfo}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <Text style={styles.requiredNote}>* Required fields</Text>
-
-            <View style={styles.formActions}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowApplicationForm(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.submitButton}
-                onPress={handleSubmitApplication}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>
-                  {submitting ? 'Submitting...' : 'Submit Application'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
       </ScrollView>
 
-      {!showApplicationForm && (
-        <View style={styles.bottomActions}>
+      <View style={styles.bottomActions}>
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity 
+            style={styles.directionsButton}
+            onPress={handleGetDirections}
+          >
+            <Navigation size={20} color="#2563EB" />
+            <Text style={styles.directionsButtonText}>Directions</Text>
+          </TouchableOpacity>
+          
           {hasApplied ? (
-            <View style={styles.appliedContainer}>
-              <Text style={styles.appliedText}>✓ Application Submitted</Text>
-              <Text style={styles.appliedSubtext}>You have already applied for this job</Text>
+            <View style={styles.appliedButton}>
+              <Text style={styles.appliedText}>✓ Applied</Text>
             </View>
           ) : (
             <TouchableOpacity 
               style={styles.applyButton}
-              onPress={() => setShowApplicationForm(true)}
+              onPress={() => router.push(`/apply-job/${id}`)}
             >
               <Text style={styles.applyButtonText}>Apply for this Job</Text>
             </TouchableOpacity>
           )}
         </View>
-      )}
+      </View>
     </View>
   );
 }
@@ -468,7 +357,29 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  directionsButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#2563EB',
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  directionsButtonText: {
+    color: '#2563EB',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   applyButton: {
+    flex: 2,
     backgroundColor: '#2563EB',
     paddingVertical: 16,
     borderRadius: 12,
@@ -479,7 +390,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  appliedContainer: {
+  appliedButton: {
+    flex: 2,
     backgroundColor: '#D1FAE5',
     padding: 16,
     borderRadius: 12,
@@ -489,11 +401,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#065F46',
-    marginBottom: 4,
-  },
-  appliedSubtext: {
-    fontSize: 14,
-    color: '#047857',
   },
   loadingContainer: {
     flex: 1,
