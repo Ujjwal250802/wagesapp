@@ -1,29 +1,48 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Platform } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Platform, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase-config';
-import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink } from 'lucide-react-native';
+import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink, Car, Walk } from 'lucide-react-native';
 import * as Location from 'expo-location';
+import * as Linking from 'expo-linking';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
 
 const { width, height } = Dimensions.get('window');
 
+// You'll need to get this from Google Cloud Console
+const GOOGLE_MAPS_APIKEY = 'YOUR_GOOGLE_MAPS_API_KEY'; // Replace with your actual API key
+
 export default function Directions() {
-  const { id } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const jobId = Array.isArray(params.id) ? params.id[0] : params.id;
+  
   const [job, setJob] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [distance, setDistance] = useState(null);
   const [duration, setDuration] = useState(null);
+  const [directions, setDirections] = useState([]);
+  const [travelMode, setTravelMode] = useState('DRIVING');
+  const mapRef = useRef(null);
 
   useEffect(() => {
-    fetchJobAndLocation();
-  }, [id]);
+    if (jobId) {
+      fetchJobAndLocation();
+    }
+  }, [jobId]);
 
   const fetchJobAndLocation = async () => {
     try {
+      if (!jobId) {
+        Alert.alert('Error', 'Job ID not found');
+        router.back();
+        return;
+      }
+
       // Fetch job details
-      const jobDoc = await getDoc(doc(db, 'jobs', id));
+      const jobDoc = await getDoc(doc(db, 'jobs', jobId));
       if (jobDoc.exists()) {
         const jobData = { id: jobDoc.id, ...jobDoc.data() };
         setJob(jobData);
@@ -31,24 +50,33 @@ export default function Directions() {
         // Get user's current location
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-          const currentLocation = await Location.getCurrentPositionAsync({});
-          setUserLocation({
+          const currentLocation = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          });
+          const userCoords = {
             latitude: currentLocation.coords.latitude,
             longitude: currentLocation.coords.longitude,
-          });
+          };
+          setUserLocation(userCoords);
 
-          // Calculate distance and duration if job has coordinates
+          // If job has coordinates, we can show directions
           if (jobData.coordinates) {
-            calculateDistanceAndDuration(
-              currentLocation.coords.latitude,
-              currentLocation.coords.longitude,
-              jobData.coordinates.latitude,
-              jobData.coordinates.longitude
-            );
+            // Fit map to show both locations
+            setTimeout(() => {
+              if (mapRef.current) {
+                mapRef.current.fitToCoordinates([userCoords, jobData.coordinates], {
+                  edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                  animated: true,
+                });
+              }
+            }, 1000);
           }
         } else {
           Alert.alert('Permission denied', 'Location permission is required for directions');
         }
+      } else {
+        Alert.alert('Error', 'Job not found');
+        router.back();
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -58,53 +86,60 @@ export default function Directions() {
     }
   };
 
-  const calculateDistanceAndDuration = (lat1, lon1, lat2, lon2) => {
-    // Calculate distance using Haversine formula
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distanceKm = R * c;
-    
-    setDistance(distanceKm.toFixed(1));
-    
-    // Estimate duration (assuming average speed of 30 km/h in city)
-    const estimatedDuration = Math.round((distanceKm / 30) * 60); // in minutes
-    setDuration(estimatedDuration);
+  const onDirectionsReady = (result) => {
+    setDistance(result.distance.toFixed(1));
+    setDuration(Math.round(result.duration));
+    setDirections(result.coordinates);
   };
 
-  const openInMaps = () => {
-    if (!job?.coordinates) {
-      Alert.alert('Error', 'Job location coordinates not available');
+  const openInGoogleMaps = () => {
+    if (!job?.coordinates || !userLocation) {
+      Alert.alert('Error', 'Location data not available');
       return;
     }
 
-    const { latitude, longitude } = job.coordinates;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    const { latitude: destLat, longitude: destLng } = job.coordinates;
+    const { latitude: originLat, longitude: originLng } = userLocation;
     
+    const url = Platform.select({
+      ios: `maps://app?saddr=${originLat},${originLng}&daddr=${destLat},${destLng}&dirflg=d`,
+      android: `google.navigation:q=${destLat},${destLng}&mode=d`,
+      web: `https://www.google.com/maps/dir/${originLat},${originLng}/${destLat},${destLng}`,
+    });
+
     if (Platform.OS === 'web') {
       window.open(url, '_blank');
     } else {
-      Alert.alert('Open in Maps', 'This would open in your default maps app');
+      Linking.canOpenURL(url).then((supported) => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          // Fallback to web version
+          const webUrl = `https://www.google.com/maps/dir/${originLat},${originLng}/${destLat},${destLng}`;
+          Linking.openURL(webUrl);
+        }
+      });
     }
   };
 
-  const openGoogleMaps = () => {
-    if (!job?.coordinates) {
-      Alert.alert('Error', 'Job location coordinates not available');
+  const openInAppleMaps = () => {
+    if (!job?.coordinates || !userLocation) {
+      Alert.alert('Error', 'Location data not available');
       return;
     }
 
-    const { latitude, longitude } = job.coordinates;
-    const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    const { latitude: destLat, longitude: destLng } = job.coordinates;
+    const { latitude: originLat, longitude: originLng } = userLocation;
     
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank');
-    }
+    const url = `http://maps.apple.com/?saddr=${originLat},${originLng}&daddr=${destLat},${destLng}&dirflg=d`;
+    
+    Linking.canOpenURL(url).then((supported) => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Apple Maps not available');
+      }
+    });
   };
 
   if (loading) {
@@ -141,73 +176,147 @@ export default function Directions() {
         <Text style={styles.headerTitle}>Directions</Text>
       </View>
 
-      <View style={styles.mapPlaceholder}>
-        <View style={styles.mapContent}>
-          <MapPin size={48} color="#2563EB" />
-          <Text style={styles.mapTitle}>Interactive Map</Text>
-          <Text style={styles.mapSubtitle}>
-            {job.coordinates ? 'Location coordinates available' : 'Address only available'}
-          </Text>
-          
-          {job.coordinates && userLocation && (
-            <View style={styles.coordinatesInfo}>
-              <Text style={styles.coordinateText}>
-                From: {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+      {userLocation && job.coordinates ? (
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={{
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            showsTraffic={true}
+          >
+            {/* User location marker */}
+            <Marker
+              coordinate={userLocation}
+              title="Your Location"
+              pinColor="blue"
+            />
+            
+            {/* Job location marker */}
+            <Marker
+              coordinate={job.coordinates}
+              title={job.category}
+              description={job.organizationName}
+              pinColor="red"
+            />
+            
+            {/* Directions */}
+            {GOOGLE_MAPS_APIKEY !== 'YOUR_GOOGLE_MAPS_API_KEY' && (
+              <MapViewDirections
+                origin={userLocation}
+                destination={job.coordinates}
+                apikey={GOOGLE_MAPS_APIKEY}
+                strokeWidth={4}
+                strokeColor="#2563EB"
+                mode={travelMode}
+                onReady={onDirectionsReady}
+                onError={(errorMessage) => {
+                  console.log('Directions error:', errorMessage);
+                }}
+              />
+            )}
+          </MapView>
+
+          {/* Travel mode selector */}
+          <View style={styles.travelModeContainer}>
+            <TouchableOpacity
+              style={[styles.travelModeButton, travelMode === 'DRIVING' && styles.activeTravelMode]}
+              onPress={() => setTravelMode('DRIVING')}
+            >
+              <Car size={20} color={travelMode === 'DRIVING' ? '#FFFFFF' : '#6B7280'} />
+              <Text style={[styles.travelModeText, travelMode === 'DRIVING' && styles.activeTravelModeText]}>
+                Drive
               </Text>
-              <Text style={styles.coordinateText}>
-                To: {job.coordinates.latitude.toFixed(4)}, {job.coordinates.longitude.toFixed(4)}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.travelModeButton, travelMode === 'WALKING' && styles.activeTravelMode]}
+              onPress={() => setTravelMode('WALKING')}
+            >
+              <Walk size={20} color={travelMode === 'WALKING' ? '#FFFFFF' : '#6B7280'} />
+              <Text style={[styles.travelModeText, travelMode === 'WALKING' && styles.activeTravelModeText]}>
+                Walk
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.mapPlaceholder}>
+          <View style={styles.mapContent}>
+            <MapPin size={48} color="#2563EB" />
+            <Text style={styles.mapTitle}>Map Not Available</Text>
+            <Text style={styles.mapSubtitle}>
+              {!userLocation ? 'Location permission required' : 'Job coordinates not available'}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.infoContainer}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.jobInfo}>
+            <Text style={styles.jobTitle}>{job.category}</Text>
+            <Text style={styles.organizationName}>{job.organizationName}</Text>
+            <View style={styles.locationRow}>
+              <MapPin size={16} color="#6B7280" />
+              <Text style={styles.locationText}>{job.location}</Text>
+            </View>
+          </View>
+
+          {distance && duration && (
+            <View style={styles.distanceInfo}>
+              <View style={styles.distanceItem}>
+                <Navigation size={20} color="#2563EB" />
+                <View>
+                  <Text style={styles.distanceValue}>{distance} km</Text>
+                  <Text style={styles.distanceLabel}>Distance</Text>
+                </View>
+              </View>
+              <View style={styles.distanceItem}>
+                <Clock size={20} color="#16A34A" />
+                <View>
+                  <Text style={styles.distanceValue}>{duration} min</Text>
+                  <Text style={styles.distanceLabel}>Est. Time</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.directionsButton}
+              onPress={openInGoogleMaps}
+            >
+              <Navigation size={20} color="#FFFFFF" />
+              <Text style={styles.directionsButtonText}>Open in Google Maps</Text>
+            </TouchableOpacity>
+            
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity 
+                style={styles.appleMapsButton}
+                onPress={openInAppleMaps}
+              >
+                <ExternalLink size={20} color="#2563EB" />
+                <Text style={styles.appleMapsButtonText}>Open in Apple Maps</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {GOOGLE_MAPS_APIKEY === 'YOUR_GOOGLE_MAPS_API_KEY' && (
+            <View style={styles.apiKeyWarning}>
+              <Text style={styles.warningText}>
+                ⚠️ To enable turn-by-turn directions, please add your Google Maps API key in the directions component.
               </Text>
             </View>
           )}
-        </View>
-      </View>
-
-      <View style={styles.infoContainer}>
-        <View style={styles.jobInfo}>
-          <Text style={styles.jobTitle}>{job.category}</Text>
-          <Text style={styles.organizationName}>{job.organizationName}</Text>
-          <View style={styles.locationRow}>
-            <MapPin size={16} color="#6B7280" />
-            <Text style={styles.locationText}>{job.location}</Text>
-          </View>
-        </View>
-
-        {distance && duration && (
-          <View style={styles.distanceInfo}>
-            <View style={styles.distanceItem}>
-              <Navigation size={20} color="#2563EB" />
-              <View>
-                <Text style={styles.distanceValue}>{distance} km</Text>
-                <Text style={styles.distanceLabel}>Distance</Text>
-              </View>
-            </View>
-            <View style={styles.distanceItem}>
-              <Clock size={20} color="#16A34A" />
-              <View>
-                <Text style={styles.distanceValue}>{duration} min</Text>
-                <Text style={styles.distanceLabel}>Est. Time</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={styles.directionsButton}
-            onPress={openInMaps}
-          >
-            <Navigation size={20} color="#FFFFFF" />
-            <Text style={styles.directionsButtonText}>Get Directions</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.viewOnMapButton}
-            onPress={openGoogleMaps}
-          >
-            <ExternalLink size={20} color="#2563EB" />
-            <Text style={styles.viewOnMapButtonText}>View on Google Maps</Text>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
     </View>
   );
@@ -233,6 +342,45 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  mapContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  map: {
+    flex: 1,
+  },
+  travelModeContainer: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    flexDirection: 'column',
+    gap: 8,
+  },
+  travelModeButton: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  activeTravelMode: {
+    backgroundColor: '#2563EB',
+  },
+  travelModeText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  activeTravelModeText: {
     color: '#FFFFFF',
   },
   mapPlaceholder: {
@@ -261,24 +409,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 16,
-  },
-  coordinatesInfo: {
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  coordinateText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontFamily: 'monospace',
-    marginBottom: 4,
   },
   infoContainer: {
     backgroundColor: '#FFFFFF',
-    padding: 20,
+    maxHeight: height * 0.4,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     shadowColor: '#000',
@@ -288,7 +422,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   jobInfo: {
-    marginBottom: 20,
+    padding: 20,
+    paddingBottom: 16,
   },
   jobTitle: {
     fontSize: 20,
@@ -314,6 +449,7 @@ const styles = StyleSheet.create({
   distanceInfo: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    marginHorizontal: 20,
     marginBottom: 20,
     paddingVertical: 16,
     backgroundColor: '#F8FAFC',
@@ -334,6 +470,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   buttonContainer: {
+    paddingHorizontal: 20,
     gap: 12,
   },
   directionsButton: {
@@ -350,7 +487,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  viewOnMapButton: {
+  appleMapsButton: {
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: '#2563EB',
@@ -361,10 +498,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  viewOnMapButtonText: {
+  appleMapsButtonText: {
     color: '#2563EB',
     fontSize: 16,
     fontWeight: '600',
+  },
+  apiKeyWarning: {
+    margin: 20,
+    padding: 16,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#92400E',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   loadingContainer: {
     flex: 1,
