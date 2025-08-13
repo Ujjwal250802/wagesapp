@@ -4,7 +4,7 @@ import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
-import { User, LogOut, Edit, Briefcase, Building, Mail, Phone } from 'lucide-react-native';
+import { User, LogOut, CreditCard as Edit, Briefcase, Building, Mail, Phone } from 'lucide-react-native';
 
 export default function Profile() {
   const [userProfile, setUserProfile] = useState(null);
