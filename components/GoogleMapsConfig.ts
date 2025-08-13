@@ -13,7 +13,7 @@
 
 export const GOOGLE_MAPS_CONFIG = {
   // Replace with your actual Google Maps API key
-  apiKey: 'YOUR_GOOGLE_MAPS_API_KEY',
+  apiKey: 'AIzaSyDAI4wqLhAScKjbEP0hfDe0QKibC-jJn1k',
   
   // Default map settings
   defaultRegion: {
