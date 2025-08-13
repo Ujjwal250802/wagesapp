@@ -12,7 +12,7 @@ import MapViewDirections from 'react-native-maps-directions';
 const { width, height } = Dimensions.get('window');
 
 // Get API key from environment variables (recommended) or replace with your actual key
-const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY';
+const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDAI4wqLhAScKjbEP0hfDe0QKibC-jJn1k';
 
 export default function Directions() {
   const params = useLocalSearchParams();
