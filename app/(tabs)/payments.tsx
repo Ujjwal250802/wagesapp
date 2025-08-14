@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
-import { DollarSign, Calendar, Building, CheckCircle } from 'lucide-react-native';
+import { DollarSign, Calendar, Building, CircleCheck as CheckCircle } from 'lucide-react-native';
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
