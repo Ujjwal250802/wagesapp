@@ -1,22 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Platform, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase-config';
-import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink, Car, Wallet as Walk } from 'lucide-react-native';
+import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink, Car, User as Walk } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import * as Linking from 'expo-linking';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import MapViewDirections from 'react-native-maps-directions';
 
 const { width, height } = Dimensions.get('window');
 
-// You'll need to get this from Google Cloud Console
-const GOOGLE_MAPS_APIKEY = 'AIzaSyDAI4wqLhAScKjbEP0hfDe0QKibC-jJn1k'; // Replace with your actual API key
-
 export default function Directions() {
   const params = useLocalSearchParams();
-  const jobId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const jobId = typeof params.id === 'string' ? params.id : params.id?.[0];
   
   const [job, setJob] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
@@ -24,8 +19,6 @@ export default function Directions() {
   const [distance, setDistance] = useState(null);
   const [duration, setDuration] = useState(null);
   const [directions, setDirections] = useState([]);
-  const [travelMode, setTravelMode] = useState('DRIVING');
-  const mapRef = useRef(null);
 
   useEffect(() => {
     if (jobId) {
@@ -59,17 +52,12 @@ export default function Directions() {
           };
           setUserLocation(userCoords);
 
-          // If job has coordinates, we can show directions
+          // Calculate distance if job has coordinates
           if (jobData.coordinates) {
-            // Fit map to show both locations
-            setTimeout(() => {
-              if (mapRef.current) {
-                mapRef.current.fitToCoordinates([userCoords, jobData.coordinates], {
-                  edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-                  animated: true,
-                });
-              }
-            }, 1000);
+            const dist = calculateDistance(userCoords, jobData.coordinates);
+            setDistance(dist.toFixed(1));
+            // Estimate duration (assuming average speed of 30 km/h for driving)
+            setDuration(Math.round((dist / 30) * 60));
           }
         } else {
           Alert.alert('Permission denied', 'Location permission is required for directions');
@@ -86,10 +74,16 @@ export default function Directions() {
     }
   };
 
-  const onDirectionsReady = (result) => {
-    setDistance(result.distance.toFixed(1));
-    setDuration(Math.round(result.duration));
-    setDirections(result.coordinates);
+  const calculateDistance = (coord1, coord2) => {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (coord2.latitude - coord1.latitude) * Math.PI / 180;
+    const dLon = (coord2.longitude - coord1.longitude) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(coord1.latitude * Math.PI / 180) * Math.cos(coord2.latitude * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   };
 
   const openInGoogleMaps = () => {
@@ -142,6 +136,28 @@ export default function Directions() {
     });
   };
 
+  const getDirectionsSteps = async () => {
+    if (!job?.coordinates || !userLocation) {
+      Alert.alert('Error', 'Location data not available');
+      return;
+    }
+
+    try {
+      // For now, we'll show a simple directions interface
+      // In a production app, you'd integrate with Google Directions API
+      Alert.alert(
+        'Directions',
+        `Distance: ${distance} km\nEstimated time: ${duration} minutes\n\nFor detailed turn-by-turn directions, please use Google Maps or Apple Maps.`,
+        [
+          { text: 'Open Google Maps', onPress: openInGoogleMaps },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to get directions');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -176,126 +192,78 @@ export default function Directions() {
         <Text style={styles.headerTitle}>Directions</Text>
       </View>
 
-      {userLocation && job.coordinates ? (
-        <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            initialRegion={{
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-            showsTraffic={true}
-          >
-            {/* User location marker */}
-            <Marker
-              coordinate={userLocation}
-              title="Your Location"
-              pinColor="blue"
-            />
-            
-            {/* Job location marker */}
-            <Marker
-              coordinate={job.coordinates}
-              title={job.category}
-              description={job.organizationName}
-              pinColor="red"
-            />
-            
-            {/* Directions */}
-            {GOOGLE_MAPS_APIKEY !== 'YOUR_GOOGLE_MAPS_API_KEY' && (
-              <MapViewDirections
-                origin={userLocation}
-                destination={job.coordinates}
-                apikey={GOOGLE_MAPS_APIKEY}
-                strokeWidth={4}
-                strokeColor="#2563EB"
-                mode={travelMode}
-                onReady={onDirectionsReady}
-                onError={(errorMessage) => {
-                  console.log('Directions error:', errorMessage);
-                }}
-              />
-            )}
-          </MapView>
-
-          {/* Travel mode selector */}
-          <View style={styles.travelModeContainer}>
-            <TouchableOpacity
-              style={[styles.travelModeButton, travelMode === 'DRIVING' && styles.activeTravelMode]}
-              onPress={() => setTravelMode('DRIVING')}
-            >
-              <Car size={20} color={travelMode === 'DRIVING' ? '#FFFFFF' : '#6B7280'} />
-              <Text style={[styles.travelModeText, travelMode === 'DRIVING' && styles.activeTravelModeText]}>
-                Drive
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.travelModeButton, travelMode === 'WALKING' && styles.activeTravelMode]}
-              onPress={() => setTravelMode('WALKING')}
-            >
-              <Walk size={20} color={travelMode === 'WALKING' ? '#FFFFFF' : '#6B7280'} />
-              <Text style={[styles.travelModeText, travelMode === 'WALKING' && styles.activeTravelModeText]}>
-                Walk
-              </Text>
-            </TouchableOpacity>
+      <ScrollView style={styles.content}>
+        <View style={styles.jobInfo}>
+          <Text style={styles.jobTitle}>{job.category}</Text>
+          <Text style={styles.organizationName}>{job.organizationName}</Text>
+          <View style={styles.locationRow}>
+            <MapPin size={16} color="#6B7280" />
+            <Text style={styles.locationText}>{job.location}</Text>
           </View>
         </View>
-      ) : (
-        <View style={styles.mapPlaceholder}>
-          <View style={styles.mapContent}>
-            <MapPin size={48} color="#2563EB" />
-            <Text style={styles.mapTitle}>Map Not Available</Text>
-            <Text style={styles.mapSubtitle}>
-              {!userLocation ? 'Location permission required' : 'Job coordinates not available'}
-            </Text>
-          </View>
-        </View>
-      )}
 
-      <View style={styles.infoContainer}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.jobInfo}>
-            <Text style={styles.jobTitle}>{job.category}</Text>
-            <Text style={styles.organizationName}>{job.organizationName}</Text>
-            <View style={styles.locationRow}>
-              <MapPin size={16} color="#6B7280" />
-              <Text style={styles.locationText}>{job.location}</Text>
+        {userLocation && job.coordinates ? (
+          <View style={styles.mapPlaceholder}>
+            <View style={styles.mapContent}>
+              <MapPin size={48} color="#2563EB" />
+              <Text style={styles.mapTitle}>Route Information</Text>
+              <Text style={styles.mapSubtitle}>
+                From your location to {job.organizationName}
+              </Text>
+              
+              {distance && duration && (
+                <View style={styles.routeInfo}>
+                  <View style={styles.routeItem}>
+                    <Navigation size={24} color="#2563EB" />
+                    <View>
+                      <Text style={styles.routeValue}>{distance} km</Text>
+                      <Text style={styles.routeLabel}>Distance</Text>
+                    </View>
+                  </View>
+                  <View style={styles.routeItem}>
+                    <Clock size={24} color="#16A34A" />
+                    <View>
+                      <Text style={styles.routeValue}>{duration} min</Text>
+                      <Text style={styles.routeLabel}>Est. Time</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
             </View>
           </View>
-
-          {distance && duration && (
-            <View style={styles.distanceInfo}>
-              <View style={styles.distanceItem}>
-                <Navigation size={20} color="#2563EB" />
-                <View>
-                  <Text style={styles.distanceValue}>{distance} km</Text>
-                  <Text style={styles.distanceLabel}>Distance</Text>
-                </View>
-              </View>
-              <View style={styles.distanceItem}>
-                <Clock size={20} color="#16A34A" />
-                <View>
-                  <Text style={styles.distanceValue}>{duration} min</Text>
-                  <Text style={styles.distanceLabel}>Est. Time</Text>
-                </View>
-              </View>
+        ) : (
+          <View style={styles.mapPlaceholder}>
+            <View style={styles.mapContent}>
+              <MapPin size={48} color="#2563EB" />
+              <Text style={styles.mapTitle}>Location Not Available</Text>
+              <Text style={styles.mapSubtitle}>
+                {!userLocation ? 'Location permission required' : 'Job coordinates not available'}
+              </Text>
             </View>
-          )}
+          </View>
+        )}
 
+        <View style={styles.directionsSection}>
+          <Text style={styles.sectionTitle}>Get Directions</Text>
+          <Text style={styles.sectionSubtitle}>
+            Choose your preferred navigation app for turn-by-turn directions
+          </Text>
+          
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
               style={styles.directionsButton}
-              onPress={openInGoogleMaps}
+              onPress={getDirectionsSteps}
             >
               <Navigation size={20} color="#FFFFFF" />
-              <Text style={styles.directionsButtonText}>Open in Google Maps</Text>
+              <Text style={styles.directionsButtonText}>Get Directions</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.googleMapsButton}
+              onPress={openInGoogleMaps}
+            >
+              <ExternalLink size={20} color="#2563EB" />
+              <Text style={styles.googleMapsButtonText}>Open in Google Maps</Text>
             </TouchableOpacity>
             
             {Platform.OS === 'ios' && (
@@ -308,16 +276,18 @@ export default function Directions() {
               </TouchableOpacity>
             )}
           </View>
+        </View>
 
-          {GOOGLE_MAPS_APIKEY === 'YOUR_GOOGLE_MAPS_API_KEY' && (
-            <View style={styles.apiKeyWarning}>
-              <Text style={styles.warningText}>
-                ⚠️ To enable turn-by-turn directions, please add your Google Maps API key in the directions component.
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      </View>
+        <View style={styles.tipsSection}>
+          <Text style={styles.tipsTitle}>Navigation Tips</Text>
+          <View style={styles.tipsList}>
+            <Text style={styles.tipItem}>• Check traffic conditions before leaving</Text>
+            <Text style={styles.tipItem}>• Confirm the exact location with the employer</Text>
+            <Text style={styles.tipItem}>• Allow extra time for your first visit</Text>
+            <Text style={styles.tipItem}>• Save the location for future reference</Text>
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -344,86 +314,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  mapContainer: {
+  content: {
     flex: 1,
-    position: 'relative',
-  },
-  map: {
-    flex: 1,
-  },
-  travelModeContainer: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    flexDirection: 'column',
-    gap: 8,
-  },
-  travelModeButton: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  activeTravelMode: {
-    backgroundColor: '#2563EB',
-  },
-  travelModeText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  activeTravelModeText: {
-    color: '#FFFFFF',
-  },
-  mapPlaceholder: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    margin: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-  },
-  mapContent: {
-    alignItems: 'center',
-    padding: 40,
-  },
-  mapTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  mapSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  infoContainer: {
-    backgroundColor: '#FFFFFF',
-    maxHeight: height * 0.4,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
   },
   jobInfo: {
+    backgroundColor: '#FFFFFF',
     padding: 20,
-    paddingBottom: 16,
+    marginBottom: 16,
   },
   jobTitle: {
     fontSize: 20,
@@ -446,31 +343,72 @@ const styles = StyleSheet.create({
     color: '#374151',
     flex: 1,
   },
-  distanceInfo: {
+  mapPlaceholder: {
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    minHeight: 200,
+    justifyContent: 'center',
+  },
+  mapContent: {
+    alignItems: 'center',
+  },
+  mapTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  mapSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  routeInfo: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    paddingVertical: 16,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
+    width: '100%',
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
-  distanceItem: {
-    flexDirection: 'row',
+  routeItem: {
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  distanceValue: {
+  routeValue: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#111827',
+    textAlign: 'center',
   },
-  distanceLabel: {
+  routeLabel: {
     fontSize: 12,
     color: '#6B7280',
+    textAlign: 'center',
+  },
+  directionsSection: {
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    padding: 20,
+    borderRadius: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
   },
   buttonContainer: {
-    paddingHorizontal: 20,
     gap: 12,
   },
   directionsButton: {
@@ -484,6 +422,22 @@ const styles = StyleSheet.create({
   },
   directionsButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  googleMapsButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#2563EB',
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  googleMapsButtonText: {
+    color: '#2563EB',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -503,18 +457,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  apiKeyWarning: {
-    margin: 20,
-    padding: 16,
-    backgroundColor: '#FEF3C7',
+  tipsSection: {
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    padding: 20,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
   },
-  warningText: {
+  tipsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  tipsList: {
+    gap: 8,
+  },
+  tipItem: {
     fontSize: 14,
-    color: '#92400E',
-    textAlign: 'center',
+    color: '#374151',
     lineHeight: 20,
   },
   loadingContainer: {
