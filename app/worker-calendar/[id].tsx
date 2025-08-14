@@ -4,7 +4,9 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
-import { ArrowLeft, Dolimport { ArrowLeft, DollarSign, Calendar as CalendarIcon, User, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native'ion WorkerCalendar() {
+import { ArrowLeft, DollarSign, Calendar as CalendarIcon, User, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
+
+export default function WorkerCalendar() {
   const { id, jobTitle, salary } = useLocalSearchParams();
   const workerId = typeof id === 'string' ? id : id?.[0];
   const workerJobTitle = typeof jobTitle === 'string' ? jobTitle : jobTitle?.[0];
