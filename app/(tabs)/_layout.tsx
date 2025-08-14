@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { Briefcase, User, Plus, Search, FileText } from 'lucide-react-native';
+import { Briefcase, User, Plus, Search, FileText, Users, DollarSign } from 'lucide-react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
@@ -76,6 +76,17 @@ export default function TabLayout() {
           }}
         />
       )}
+      {userType === 'organization' && (
+        <Tabs.Screen
+          name="workers"
+          options={{
+            title: 'Workers',
+            tabBarIcon: ({ size, color }) => (
+              <Users size={size} color={color} />
+            ),
+          }}
+        />
+      )}
       {userType === 'worker' && (
         <Tabs.Screen
           name="applied-jobs"
@@ -83,6 +94,17 @@ export default function TabLayout() {
             title: 'Applied Jobs',
             tabBarIcon: ({ size, color }) => (
               <FileText size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {userType === 'worker' && (
+        <Tabs.Screen
+          name="payments"
+          options={{
+            title: 'Payments',
+            tabBarIcon: ({ size, color }) => (
+              <DollarSign size={size} color={color} />
             ),
           }}
         />
@@ -96,9 +118,25 @@ export default function TabLayout() {
           }}
         />
       )}
+      {userType === 'worker' && (
+        <Tabs.Screen
+          name="workers"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      )}
       {userType === 'organization' && (
         <Tabs.Screen
           name="applied-jobs"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      )}
+      {userType === 'organization' && (
+        <Tabs.Screen
+          name="payments"
           options={{
             href: null, // This hides the tab
           }}
