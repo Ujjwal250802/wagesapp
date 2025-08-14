@@ -4,7 +4,6 @@ import { Briefcase, User, Plus, Search, FileText } from 'lucide-react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
-import Layout from '../../components/Layout';
 
 export default function TabLayout() {
   const [userType, setUserType] = useState(null);
@@ -43,79 +42,77 @@ export default function TabLayout() {
   }
 
   return (
-    <Layout>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: '#2563EB',
-          tabBarInactiveTintColor: '#6B7280',
-          tabBarStyle: {
-            backgroundColor: '#FFFFFF',
-            borderTopWidth: 1,
-            borderTopColor: '#E5E7EB',
-            height: 80,
-            paddingBottom: 10,
-            paddingTop: 10,
-          },
-        }}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: '#2563EB',
+        tabBarInactiveTintColor: '#6B7280',
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          height: 80,
+          paddingBottom: 10,
+          paddingTop: 10,
+        },
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: userType === 'organization' ? 'Applications' : 'Find Jobs',
+          tabBarIcon: ({ size, color }) => (
+            <Search size={size} color={color} />
+          ),
+        }}
+      />
+      {userType === 'organization' && (
         <Tabs.Screen
-          name="index"
+          name="post-job"
           options={{
-            title: userType === 'organization' ? 'Applications' : 'Find Jobs',
+            title: 'Post Job',
             tabBarIcon: ({ size, color }) => (
-              <Search size={size} color={color} />
+              <Plus size={size} color={color} />
             ),
           }}
         />
-        {userType === 'organization' && (
-          <Tabs.Screen
-            name="post-job"
-            options={{
-              title: 'Post Job',
-              tabBarIcon: ({ size, color }) => (
-                <Plus size={size} color={color} />
-              ),
-            }}
-          />
-        )}
-        {userType === 'worker' && (
-          <Tabs.Screen
-            name="applied-jobs"
-            options={{
-              title: 'Applied Jobs',
-              tabBarIcon: ({ size, color }) => (
-                <FileText size={size} color={color} />
-              ),
-            }}
-          />
-        )}
-        {/* Hide post-job and applied-jobs from the opposite user types */}
-        {userType === 'worker' && (
-          <Tabs.Screen
-            name="post-job"
-            options={{
-              href: null, // This hides the tab
-            }}
-          />
-        )}
-        {userType === 'organization' && (
-          <Tabs.Screen
-            name="applied-jobs"
-            options={{
-              href: null, // This hides the tab
-            }}
-          />
-        )}
+      )}
+      {userType === 'worker' && (
         <Tabs.Screen
-          name="profile"
+          name="applied-jobs"
           options={{
-            title: 'Profile',
+            title: 'Applied Jobs',
             tabBarIcon: ({ size, color }) => (
-              <User size={size} color={color} />
+              <FileText size={size} color={color} />
             ),
           }}
         />
-      </Tabs>
-    </Layout>
+      )}
+      {/* Hide post-job and applied-jobs from the opposite user types */}
+      {userType === 'worker' && (
+        <Tabs.Screen
+          name="post-job"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      )}
+      {userType === 'organization' && (
+        <Tabs.Screen
+          name="applied-jobs"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      )}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ size, color }) => (
+            <User size={size} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }

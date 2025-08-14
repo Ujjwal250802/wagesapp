@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,10 +9,8 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          {children}
-        </View>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        {children}
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -21,8 +20,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-  },
-  content: {
-    flex: 1,
   },
 });

@@ -6,6 +6,7 @@ import { db } from '../../firebase-config';
 import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink, Car, User as Walk } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import * as Linking from 'expo-linking';
+import Layout from '../../components/Layout';
 
 const { width, height } = Dimensions.get('window');
 
@@ -181,7 +182,7 @@ export default function Directions() {
   }
 
   return (
-    <View style={styles.container}>
+    <Layout>
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.headerBackButton}
@@ -288,7 +289,7 @@ export default function Directions() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </Layout>
   );
 }
 
