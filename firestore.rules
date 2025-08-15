@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read and write their own worker profile
+    match /workers/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read and write their own organization profile
+    match /organizations/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read all jobs, but only write jobs they created
+    match /jobs/{jobId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        (request.auth.uid == resource.data.postedBy || 
+         request.auth.uid == request.resource.data.postedBy);
+    }
+    
+    // Allow authenticated users to read and write applications
+    match /applications/{applicationId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read and write attendance records
+    // Employers can manage attendance for their workers
+    match /attendance/{attendanceId} {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.employerId || 
+         request.auth.uid == request.resource.data.employerId ||
+         request.auth.uid == resource.data.workerId ||
+         request.auth.uid == request.resource.data.workerId);
+    }
+    
+    // Allow authenticated users to read and write payment records
+    match /payments/{paymentId} {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.employerId || 
+         request.auth.uid == request.resource.data.employerId ||
+         request.auth.uid == resource.data.workerId ||
+         request.auth.uid == request.resource.data.workerId);
+    }
+    
+    // Fallback rule for development - remove in production
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

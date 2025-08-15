@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 const firebaseConfig = {
   // Replace with your Firebase config
@@ -16,4 +16,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Enable offline persistence
+try {
+  // This will enable offline support
+  if (typeof window !== 'undefined') {
+    // Only enable in browser environment
+    import('firebase/firestore').then(({ enableNetwork }) => {
+      enableNetwork(db).catch(console.error);
+    });
+  }
+} catch (error) {
+  console.log('Offline persistence not available:', error);
+}
+
 export default app;

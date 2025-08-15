@@ -65,20 +65,51 @@ export default function WorkerCalendar() {
       const user = auth.currentUser;
       if (!user || !workerId) return;
 
+      // Ensure user is authenticated
+      if (!user.emailVerified) {
+        console.log('User email not verified');
+        return;
+      }
+
       const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
-      const attendanceDoc = await getDoc(doc(db, 'attendance', attendanceId));
       
-      if (attendanceDoc.exists()) {
-        const data = attendanceDoc.data();
-        setAttendanceData(data.attendance || {});
-        updateMarkedDates(data.attendance || {});
-      } else {
+      try {
+        const attendanceDoc = await getDoc(doc(db, 'attendance', attendanceId));
+        
+        if (attendanceDoc.exists()) {
+          const data = attendanceDoc.data();
+          setAttendanceData(data.attendance || {});
+          updateMarkedDates(data.attendance || {});
+        } else {
+          // Create initial attendance document if it doesn't exist
+          const initialData = {
+            employerId: user.uid,
+            workerId: workerId,
+            workerName: workerData?.applicantName || workerData?.name || 'Unknown',
+            jobTitle: workerJobTitle,
+            year: currentYear,
+            month: currentMonth + 1,
+            attendance: {},
+            dailyRate: dailyRate,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+          
+          await setDoc(doc(db, 'attendance', attendanceId), initialData);
+          setAttendanceData({});
+          updateMarkedDates({});
+        }
+      } catch (firestoreError) {
+        console.error('Firestore error:', firestoreError);
+        // Initialize with empty data if there's a permission error
         setAttendanceData({});
         updateMarkedDates({});
       }
     } catch (error) {
       console.error('Error loading attendance:', error);
-      Alert.alert('Error', 'Failed to load attendance data');
+      // Don't show alert for permission errors during initial load
+      setAttendanceData({});
+      updateMarkedDates({});
     }
   };
 
@@ -128,10 +159,24 @@ export default function WorkerCalendar() {
       return;
     }
 
+    // Validate selected date is not in the future
+    const today = new Date();
+    const selected = new Date(selectedDate);
+    if (selected > today) {
+      Alert.alert('Error', 'Cannot mark attendance for future dates');
+      return;
+    }
+
     try {
       const user = auth.currentUser;
       if (!user) {
         Alert.alert('Error', 'You must be logged in');
+        return;
+      }
+
+      // Check if user email is verified
+      if (!user.emailVerified) {
+        Alert.alert('Error', 'Please verify your email address first');
         return;
       }
 
@@ -142,8 +187,8 @@ export default function WorkerCalendar() {
 
       const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
       
-      // Create the attendance document
-      await setDoc(doc(db, 'attendance', attendanceId), {
+      // Prepare attendance document data
+      const attendanceData = {
         employerId: user.uid,
         workerId: workerId,
         workerName: workerData?.applicantName || workerData?.name || 'Unknown',
@@ -153,7 +198,21 @@ export default function WorkerCalendar() {
         attendance: updatedAttendance,
         dailyRate: dailyRate,
         updatedAt: new Date()
-      });
+      };
+
+      // Add createdAt only if it's a new document
+      try {
+        const existingDoc = await getDoc(doc(db, 'attendance', attendanceId));
+        if (!existingDoc.exists()) {
+          attendanceData.createdAt = new Date();
+        }
+      } catch (error) {
+        // If we can't check, assume it's new
+        attendanceData.createdAt = new Date();
+      }
+
+      // Create or update the attendance document
+      await setDoc(doc(db, 'attendance', attendanceId), attendanceData);
 
       setAttendanceData(updatedAttendance);
       updateMarkedDates(updatedAttendance);
@@ -164,7 +223,24 @@ export default function WorkerCalendar() {
       );
     } catch (error) {
       console.error('Error marking attendance:', error);
-      Alert.alert('Error', 'Failed to mark attendance. Please try again.');
+      
+      // Provide more specific error messages
+      if (error.code === 'permission-denied') {
+        Alert.alert(
+          'Permission Error', 
+          'You do not have permission to mark attendance. Please contact support.'
+        );
+      } else if (error.code === 'unauthenticated') {
+        Alert.alert(
+          'Authentication Error', 
+          'Please log out and log back in to continue.'
+        );
+      } else {
+        Alert.alert(
+          'Error', 
+          `Failed to mark attendance: ${error.message || 'Unknown error'}`
+        );
+      }
     }
   };
 
@@ -189,9 +265,20 @@ export default function WorkerCalendar() {
       const user = auth.currentUser;
       if (!user) return;
 
+      // Check if user email is verified
+      if (!user.emailVerified) {
+        Alert.alert('Error', 'Please verify your email address first');
+        return;
+      }
+
       // Get organization name
-      const orgDoc = await getDoc(doc(db, 'organizations', user.uid));
-      const orgName = orgDoc.exists() ? orgDoc.data().organizationName : 'Organization';
+      let orgName = 'Organization';
+      try {
+        const orgDoc = await getDoc(doc(db, 'organizations', user.uid));
+        orgName = orgDoc.exists() ? orgDoc.data().organizationName : 'Organization';
+      } catch (error) {
+        console.log('Could not fetch organization name:', error);
+      }
 
       // Create payment record
       await addDoc(collection(db, 'payments'), {
@@ -210,7 +297,8 @@ export default function WorkerCalendar() {
 
       // Reset attendance for next month
       const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
-      await setDoc(doc(db, 'attendance', attendanceId), {
+      
+      const resetAttendanceData = {
         employerId: user.uid,
         workerId: workerId,
         workerName: workerData?.applicantName || workerData?.name || 'Unknown',
@@ -219,8 +307,11 @@ export default function WorkerCalendar() {
         month: currentMonth + 1,
         attendance: {},
         dailyRate: dailyRate,
+        createdAt: new Date(),
         updatedAt: new Date()
-      });
+      };
+
+      await setDoc(doc(db, 'attendance', attendanceId), resetAttendanceData);
 
       setAttendanceData({});
       setMarkedDates({});
@@ -230,7 +321,19 @@ export default function WorkerCalendar() {
       Alert.alert('Success', 'Payment completed successfully!');
     } catch (error) {
       console.error('Error processing payment:', error);
-      Alert.alert('Error', 'Payment failed. Please try again.');
+      
+      // Provide more specific error messages
+      if (error.code === 'permission-denied') {
+        Alert.alert(
+          'Permission Error', 
+          'You do not have permission to process payments. Please contact support.'
+        );
+      } else {
+        Alert.alert(
+          'Payment Error', 
+          `Payment failed: ${error.message || 'Unknown error'}. Please try again.`
+        );
+      }
     }
   };
 
