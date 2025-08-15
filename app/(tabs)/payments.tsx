@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { DollarSign, Calendar, Building, CircleCheck as CheckCircle } from 'lucide-react-native';
 
@@ -21,8 +21,7 @@ export default function Payments() {
       // Get payments made to this worker
       const paymentsQuery = query(
         collection(db, 'payments'),
-        where('workerId', '==', user.uid),
-        orderBy('paidAt', 'desc')
+        where('workerId', '==', user.uid)
       );
       
       const paymentsSnapshot = await getDocs(paymentsQuery);
@@ -30,6 +29,13 @@ export default function Payments() {
         id: doc.id,
         ...doc.data()
       }));
+
+      // Sort by payment date (newest first) - do this in memory to avoid index requirement
+      paymentsData.sort((a, b) => {
+        const dateA = a.paidAt?.toDate() || new Date(0);
+        const dateB = b.paidAt?.toDate() || new Date(0);
+        return dateB - dateA;
+      });
 
       setPayments(paymentsData);
       
@@ -61,19 +67,27 @@ export default function Payments() {
       <View style={styles.paymentDetails}>
         <View style={styles.detailRow}>
           <Building size={16} color="#6B7280" />
-          <Text style={styles.detailText}>{item.employerName}</Text>
+          <Text style={styles.detailText}>{item.employerName || 'Employer'}</Text>
         </View>
         <View style={styles.detailRow}>
           <Calendar size={16} color="#6B7280" />
           <Text style={styles.detailText}>
-            {item.workPeriod} • Paid on {new Date(item.paidAt?.toDate()).toLocaleDateString()}
+            {item.workPeriod || 'Work Period'} • Paid on {item.paidAt ? new Date(item.paidAt.toDate()).toLocaleDateString() : 'N/A'}
           </Text>
         </View>
+        {item.paymentMethod && (
+          <View style={styles.detailRow}>
+            <DollarSign size={16} color="#6B7280" />
+            <Text style={styles.detailText}>
+              Payment Method: {item.paymentMethod === 'razorpay' ? 'Razorpay' : item.paymentMethod}
+            </Text>
+          </View>
+        )}
       </View>
       
       <View style={styles.paymentFooter}>
-        <Text style={styles.workDays}>Work Days: {item.workDays}</Text>
-        <Text style={styles.paymentId}>ID: {item.paymentId}</Text>
+        <Text style={styles.workDays}>Work Days: {item.workDays || 0}</Text>
+        <Text style={styles.paymentId}>ID: {item.razorpayPaymentId || item.paymentId || 'N/A'}</Text>
       </View>
     </View>
   );

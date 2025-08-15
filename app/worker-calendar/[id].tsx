@@ -5,6 +5,7 @@ import { Calendar } from 'react-native-calendars';
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { ArrowLeft, DollarSign, Calendar as CalendarIcon, User, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
+import RazorpayCheckout from 'react-native-razorpay';
 
 export default function WorkerCalendar() {
   const { id, jobTitle, salary } = useLocalSearchParams();
@@ -250,17 +251,49 @@ export default function WorkerCalendar() {
       return;
     }
 
-    Alert.alert(
-      'Confirm Payment',
-      `Pay ₹${monthlyTotal.toLocaleString()} to ${workerData?.applicantName || workerData?.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Pay Now', onPress: processPayment }
-      ]
-    );
+    // Get organization details for Razorpay
+    const user = auth.currentUser;
+    if (!user) return;
+
+    let orgData = {};
+    try {
+      const orgDoc = await getDoc(doc(db, 'organizations', user.uid));
+      orgData = orgDoc.exists() ? orgDoc.data() : {};
+    } catch (error) {
+      console.log('Could not fetch organization data:', error);
+    }
+
+    // Razorpay options
+    const options = {
+      description: `Payment for ${workerData?.applicantName || workerData?.name} - ${workerJobTitle}`,
+      image: 'https://i.imgur.com/3g7nmJC.png', // Your app logo URL
+      currency: 'INR',
+      key: 'rzp_test_uO9KUIRRmFD0rp', // Your Razorpay test key
+      amount: monthlyTotal * 100, // Amount in paise (multiply by 100)
+      name: orgData.organizationName || 'WorkConnect',
+      prefill: {
+        email: orgData.email || user.email,
+        contact: orgData.phone || '',
+        name: orgData.contactPerson || orgData.organizationName || 'Employer'
+      },
+      theme: { color: '#2563EB' }
+    };
+
+    try {
+      const data = await RazorpayCheckout.open(options);
+      // Payment successful
+      console.log('Payment Success:', data);
+      await processPayment(data.razorpay_payment_id);
+    } catch (error) {
+      // Payment failed or cancelled
+      console.log('Payment Error:', error);
+      if (error.code !== 'payment_cancelled') {
+        Alert.alert('Payment Failed', error.description || 'Payment could not be processed');
+      }
+    }
   };
 
-  const processPayment = async () => {
+  const processPayment = async (paymentId = null) => {
     try {
       const user = auth.currentUser;
       if (!user) return;
@@ -290,9 +323,11 @@ export default function WorkerCalendar() {
         amount: monthlyTotal,
         workDays: workDays,
         workPeriod: `${getMonthName(currentMonth)} ${currentYear}`,
-        paymentId: `PAY_${Date.now()}`,
+        paymentId: paymentId || `PAY_${Date.now()}`,
+        razorpayPaymentId: paymentId,
         paidAt: new Date(),
-        status: 'completed'
+        status: 'completed',
+        paymentMethod: 'razorpay'
       });
 
       // Reset attendance for next month
@@ -318,7 +353,11 @@ export default function WorkerCalendar() {
       setMonthlyTotal(0);
       setWorkDays(0);
 
-      Alert.alert('Success', 'Payment completed successfully!');
+      Alert.alert(
+        'Payment Successful!', 
+        `₹${monthlyTotal.toLocaleString()} has been paid to ${workerData?.applicantName || workerData?.name}`,
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
     } catch (error) {
       console.error('Error processing payment:', error);
       
