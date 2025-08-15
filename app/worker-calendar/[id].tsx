@@ -5,7 +5,8 @@ import { Calendar } from 'react-native-calendars';
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { ArrowLeft, DollarSign, Calendar as CalendarIcon, User, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
-import RazorpayCheckout from 'react-native-razorpay';
+import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 
 export default function WorkerCalendar() {
   const { id, jobTitle, salary } = useLocalSearchParams();
@@ -251,10 +252,10 @@ export default function WorkerCalendar() {
       return;
     }
 
-    // Get organization details for Razorpay
     const user = auth.currentUser;
     if (!user) return;
 
+    // Get organization details
     let orgData = {};
     try {
       const orgDoc = await getDoc(doc(db, 'organizations', user.uid));
@@ -263,33 +264,77 @@ export default function WorkerCalendar() {
       console.log('Could not fetch organization data:', error);
     }
 
-    // Razorpay options
-    const options = {
-      description: `Payment for ${workerData?.applicantName || workerData?.name} - ${workerJobTitle}`,
-      image: 'https://i.imgur.com/3g7nmJC.png', // Your app logo URL
-      currency: 'INR',
-      key: 'rzp_test_uO9KUIRRmFD0rp', // Your Razorpay test key
-      amount: monthlyTotal * 100, // Amount in paise (multiply by 100)
-      name: orgData.organizationName || 'WorkConnect',
-      prefill: {
-        email: orgData.email || user.email,
-        contact: orgData.phone || '',
-        name: orgData.contactPerson || orgData.organizationName || 'Employer'
-      },
-      theme: { color: '#2563EB' }
-    };
+    if (Platform.OS === 'web') {
+      // Web implementation using Razorpay Checkout
+      await handleWebPayment(orgData);
+    } else {
+      // For now, simulate payment on mobile
+      Alert.alert(
+        'Payment Simulation',
+        `This would process payment of ₹${monthlyTotal} for ${workerData?.applicantName || workerData?.name}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Simulate Payment', onPress: () => processPayment(`PAY_${Date.now()}`) }
+        ]
+      );
+    }
+  };
 
+  const handleWebPayment = async (orgData) => {
     try {
-      const data = await RazorpayCheckout.open(options);
-      // Payment successful
-      console.log('Payment Success:', data);
-      await processPayment(data.razorpay_payment_id);
-    } catch (error) {
-      // Payment failed or cancelled
-      console.log('Payment Error:', error);
-      if (error.code !== 'payment_cancelled') {
-        Alert.alert('Payment Failed', error.description || 'Payment could not be processed');
+      // Create Razorpay order (in a real app, this would be done on your backend)
+      const orderId = `order_${Date.now()}`;
+      
+      // Razorpay configuration
+      const options = {
+        key: 'rzp_test_uO9KUIRRmFD0rp',
+        amount: monthlyTotal * 100, // Amount in paise
+        currency: 'INR',
+        name: orgData.organizationName || 'WorkConnect',
+        description: `Payment for ${workerData?.applicantName || workerData?.name} - ${workerJobTitle}`,
+        order_id: orderId,
+        prefill: {
+          name: orgData.contactPerson || orgData.organizationName || 'Employer',
+          email: orgData.email || auth.currentUser?.email,
+          contact: orgData.phone || ''
+        },
+        theme: {
+          color: '#2563EB'
+        },
+        handler: function (response) {
+          console.log('Payment Success:', response);
+          processPayment(response.razorpay_payment_id);
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Payment cancelled');
+          }
+        }
+      };
+
+      // Load Razorpay script and open checkout
+      if (typeof window !== 'undefined') {
+        // Check if Razorpay script is already loaded
+        if (!window.Razorpay) {
+          // Load Razorpay script
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = () => {
+            const rzp = new window.Razorpay(options);
+            rzp.open();
+          };
+          script.onerror = () => {
+            Alert.alert('Error', 'Failed to load payment gateway');
+          };
+          document.body.appendChild(script);
+        } else {
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+        }
       }
+    } catch (error) {
+      console.error('Payment error:', error);
+      Alert.alert('Payment Error', 'Failed to initialize payment gateway');
     }
   };
 
@@ -327,7 +372,7 @@ export default function WorkerCalendar() {
         razorpayPaymentId: paymentId,
         paidAt: new Date(),
         status: 'completed',
-        paymentMethod: 'razorpay'
+        paymentMethod: paymentId?.startsWith('pay_') ? 'razorpay' : 'simulation'
       });
 
       // Reset attendance for next month
