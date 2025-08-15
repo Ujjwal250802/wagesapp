@@ -1,18 +1,30 @@
-import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Briefcase, Users } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 const { width, height } = Dimensions.get('window');
 
 export default function Welcome() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
+
   return (
-    <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.container}>
+    <LinearGradient colors={[colors.primary, '#1D4ED8']} style={styles.container}>
+      <View style={styles.topControls}>
+        <LanguageSelector />
+        <ThemeToggle />
+      </View>
+      
       <View style={styles.content}>
         <View style={styles.header}>
           <Briefcase size={60} color="#FFFFFF" />
-          <Text style={styles.title}>WorkConnect</Text>
-          <Text style={styles.subtitle}>Connecting Daily Wage Workers with Opportunities</Text>
+          <Text style={styles.title}>{t('appName')}</Text>
+          <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
         </View>
         
         <View style={styles.buttonContainer}>
@@ -21,8 +33,8 @@ export default function Welcome() {
             onPress={() => router.push('/auth/worker-auth')}
           >
             <Users size={24} color="#2563EB" />
-            <Text style={[styles.buttonText, styles.workerButtonText]}>I'm Looking for Work</Text>
-            <Text style={styles.buttonSubtext}>Find daily wage jobs near you</Text>
+            <Text style={[styles.buttonText, styles.workerButtonText]}>{t('lookingForWork')}</Text>
+            <Text style={styles.buttonSubtext}>{t('findJobsSubtext')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -30,8 +42,8 @@ export default function Welcome() {
             onPress={() => router.push('/auth/organization-auth')}
           >
             <Briefcase size={24} color="#FFFFFF" />
-            <Text style={[styles.buttonText, styles.organizationButtonText]}>I'm an Employer</Text>
-            <Text style={[styles.buttonSubtext, { color: '#E5E7EB' }]}>Post jobs and hire workers</Text>
+            <Text style={[styles.buttonText, styles.organizationButtonText]}>{t('employer')}</Text>
+            <Text style={[styles.buttonSubtext, { color: '#E5E7EB' }]}>{t('postJobsSubtext')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -42,6 +54,14 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  topControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
   content: {
     flex: 1,

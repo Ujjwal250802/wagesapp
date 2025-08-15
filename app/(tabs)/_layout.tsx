@@ -4,8 +4,12 @@ import { Briefcase, User, Plus, Search, FileText, Users, DollarSign, List } from
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function TabLayout() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [userType, setUserType] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,12 +49,12 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2563EB',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: colors.border,
           height: 80,
           paddingBottom: 10,
           paddingTop: 10,
@@ -59,7 +63,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: userType === 'organization' ? 'Applications' : 'Find Jobs',
+          title: userType === 'organization' ? t('applications') : t('findJobs'),
           tabBarIcon: ({ size, color }) => (
             <Search size={size} color={color} />
           ),
@@ -69,7 +73,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="post-job"
           options={{
-            title: 'Post Job',
+            title: t('postJob'),
             tabBarIcon: ({ size, color }) => (
               <Plus size={size} color={color} />
             ),
@@ -80,7 +84,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="my-jobs"
           options={{
-            title: 'My Jobs',
+            title: t('myJobs'),
             tabBarIcon: ({ size, color }) => (
               <List size={size} color={color} />
             ),
@@ -91,7 +95,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="workers"
           options={{
-            title: 'Workers',
+            title: t('workers'),
             tabBarIcon: ({ size, color }) => (
               <Users size={size} color={color} />
             ),
@@ -102,7 +106,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="applied-jobs"
           options={{
-            title: 'Applied Jobs',
+            title: t('appliedJobs'),
             tabBarIcon: ({ size, color }) => (
               <FileText size={size} color={color} />
             ),
@@ -113,7 +117,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="payments"
           options={{
-            title: 'Payments',
+            title: t('payments'),
             tabBarIcon: ({ size, color }) => (
               <DollarSign size={size} color={color} />
             ),
@@ -164,7 +168,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('profile'),
           tabBarIcon: ({ size, color }) => (
             <User size={size} color={color} />
           ),

@@ -5,8 +5,14 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVe
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { ArrowLeft, Mail, Lock, Building, User, Phone } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 export default function OrganizationAuth() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,52 +71,60 @@ export default function OrganizationAuth() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.topControls}>
+        <LanguageSelector />
+        <ThemeToggle />
+      </View>
+      
       <TouchableOpacity 
         style={styles.backButton}
         onPress={() => router.back()}
       >
-        <ArrowLeft size={24} color="#2563EB" />
+        <ArrowLeft size={24} color={colors.primary} />
       </TouchableOpacity>
 
       <View style={styles.content}>
         <Text style={styles.title}>
-          {isLogin ? 'Organization Login' : 'Register Organization'}
+          {isLogin ? t('organizationLogin') : t('registerOrganization')}
         </Text>
         <Text style={styles.subtitle}>
-          {isLogin ? 'Sign in to post job opportunities' : 'Create your organization account'}
+          {isLogin ? t('signInToPost') : t('createOrgAccount')}
         </Text>
 
         <View style={styles.form}>
           {!isLogin && (
             <>
-              <View style={styles.inputContainer}>
-                <Building size={20} color="#6B7280" style={styles.inputIcon} />
+              <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Building size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
-                  placeholder="Organization Name"
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder={t('organizationName')}
+                  placeholderTextColor={colors.textSecondary}
                   value={organizationName}
                   onChangeText={setOrganizationName}
                   autoCapitalize="words"
                 />
               </View>
 
-              <View style={styles.inputContainer}>
-                <User size={20} color="#6B7280" style={styles.inputIcon} />
+              <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <User size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
-                  placeholder="Contact Person Name"
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder={t('contactPerson')}
+                  placeholderTextColor={colors.textSecondary}
                   value={contactPerson}
                   onChangeText={setContactPerson}
                   autoCapitalize="words"
                 />
               </View>
 
-              <View style={styles.inputContainer}>
-                <Phone size={20} color="#6B7280" style={styles.inputIcon} />
+              <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Phone size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
-                  placeholder="Contact Number"
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder={t('contactNumber')}
+                  placeholderTextColor={colors.textSecondary}
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
@@ -119,11 +133,12 @@ export default function OrganizationAuth() {
             </>
           )}
 
-          <View style={styles.inputContainer}>
-            <Mail size={20} color="#6B7280" style={styles.inputIcon} />
+          <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Mail size={20} color={colors.textSecondary} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
-              placeholder="Email Address"
+              style={[styles.input, { color: colors.text }]}
+              placeholder={t('emailAddress')}
+              placeholderTextColor={colors.textSecondary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -131,11 +146,12 @@ export default function OrganizationAuth() {
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Lock size={20} color="#6B7280" style={styles.inputIcon} />
+          <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Lock size={20} color={colors.textSecondary} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
-              placeholder="Password"
+              style={[styles.input, { color: colors.text }]}
+              placeholder={t('password')}
+              placeholderTextColor={colors.textSecondary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -143,11 +159,12 @@ export default function OrganizationAuth() {
           </View>
 
           {!isLogin && (
-            <View style={styles.inputContainer}>
-              <Lock size={20} color="#6B7280" style={styles.inputIcon} />
+            <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <Lock size={20} color={colors.textSecondary} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t('confirmPassword')}
+                placeholderTextColor={colors.textSecondary}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -156,12 +173,12 @@ export default function OrganizationAuth() {
           )}
 
           <TouchableOpacity 
-            style={styles.authButton}
+            style={[styles.authButton, { backgroundColor: colors.secondary }]}
             onPress={handleAuth}
             disabled={loading}
           >
             <Text style={styles.authButtonText}>
-              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
+              {loading ? t('pleaseWait') : (isLogin ? t('signIn') : t('createAccount'))}
             </Text>
           </TouchableOpacity>
 
@@ -169,8 +186,8 @@ export default function OrganizationAuth() {
             style={styles.switchButton}
             onPress={() => setIsLogin(!isLogin)}
           >
-            <Text style={styles.switchButtonText}>
-              {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+            <Text style={[styles.switchButtonText, { color: colors.secondary }]}>
+              {isLogin ? t('noAccount') : t('haveAccount')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -182,11 +199,18 @@ export default function OrganizationAuth() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+  },
+  topControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: 110,
     left: 20,
     zIndex: 1,
     padding: 10,
@@ -194,17 +218,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
-    paddingTop: 100,
+    paddingTop: 160,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#111827',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginBottom: 40,
   },
   form: {
@@ -214,10 +236,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#F9FAFB',
   },
   inputIcon: {
     marginRight: 12,
@@ -226,10 +246,8 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 56,
     fontSize: 16,
-    color: '#111827',
   },
   authButton: {
-    backgroundColor: '#16A34A',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -245,7 +263,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   switchButtonText: {
-    color: '#16A34A',
     fontSize: 16,
   },
 });

@@ -6,6 +6,10 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
 import { Search, MapPin, Clock, DollarSign, User, Mail, Phone } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 const JOB_CATEGORIES = [
   'Electrician', 'Plumber', 'Mechanic', 'Cook', 'Peon', 
@@ -13,6 +17,8 @@ const JOB_CATEGORIES = [
 ];
 
 export default function MainScreen() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -208,16 +214,24 @@ export default function MainScreen() {
 
   if (userType === 'organization') {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Job Applications</Text>
-          <Text style={styles.headerSubtitle}>Manage applications for your posted jobs</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerContent}>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>{t('jobApplications')}</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('manageApplications')}</Text>
+            </View>
+            <View style={styles.headerControls}>
+              <LanguageSelector />
+              <ThemeToggle />
+            </View>
+          </View>
         </View>
 
         {applications.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No applications yet</Text>
-            <Text style={styles.emptySubtext}>Applications will appear here when job seekers apply to your posted jobs</Text>
+          <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+            <Text style={[styles.emptyText, { color: colors.text }]}>{t('noApplicationsYet')}</Text>
+            <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('applicationsWillAppear')}</Text>
           </View>
         ) : (
           <FlatList
@@ -233,38 +247,62 @@ export default function MainScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Available Jobs</Text>
-        <Text style={styles.headerSubtitle}>Find your perfect daily wage job</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerContent}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('availableJobs')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('findPerfectJob')}</Text>
+          </View>
+          <View style={styles.headerControls}>
+            <LanguageSelector />
+            <ThemeToggle />
+          </View>
+        </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.categoriesContainer, { backgroundColor: colors.surface }]}>
         <TouchableOpacity 
-          style={[styles.categoryChip, selectedCategory === 'All' && styles.selectedCategoryChip]}
+          style={[
+            styles.categoryChip, 
+            { backgroundColor: colors.background, borderColor: colors.border },
+            selectedCategory === 'All' && { backgroundColor: colors.primary, borderColor: colors.primary }
+          ]}
           onPress={() => setSelectedCategory('All')}
         >
-          <Text style={[styles.categoryText, selectedCategory === 'All' && styles.selectedCategoryText]}>
-            All Jobs
+          <Text style={[
+            styles.categoryText, 
+            { color: colors.textSecondary },
+            selectedCategory === 'All' && { color: '#FFFFFF' }
+          ]}>
+            {t('allJobs')}
           </Text>
         </TouchableOpacity>
         {JOB_CATEGORIES.map((category) => (
           <TouchableOpacity 
             key={category}
-            style={[styles.categoryChip, selectedCategory === category && styles.selectedCategoryChip]}
+            style={[
+              styles.categoryChip, 
+              { backgroundColor: colors.background, borderColor: colors.border },
+              selectedCategory === category && { backgroundColor: colors.primary, borderColor: colors.primary }
+            ]}
             onPress={() => setSelectedCategory(category)}
           >
-            <Text style={[styles.categoryText, selectedCategory === category && styles.selectedCategoryText]}>
-              {category}
+            <Text style={[
+              styles.categoryText, 
+              { color: colors.textSecondary },
+              selectedCategory === category && { color: '#FFFFFF' }
+            ]}>
+              {t(category.toLowerCase().replace(/\s+/g, ''))}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       {jobs.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No jobs available</Text>
-          <Text style={styles.emptySubtext}>Check back later for new opportunities</Text>
+        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+          <Text style={[styles.emptyText, { color: colors.text }]}>{t('noJobsAvailable')}</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('checkBackLater')}</Text>
         </View>
       ) : (
         <FlatList
@@ -282,48 +320,46 @@ export default function MainScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: '#FFFFFF',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    gap: 12,
+    marginLeft: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 4,
   },
   categoriesContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
   },
   categoryChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginRight: 12,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  selectedCategoryChip: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
   },
   categoryText: {
     fontSize: 14,
-    color: '#64748B',
     fontWeight: '500',
-  },
-  selectedCategoryText: {
-    color: '#FFFFFF',
   },
   jobsList: {
     padding: 20,
@@ -474,12 +510,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
   },
