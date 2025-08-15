@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
 import { User, Briefcase, Calendar, Clock } from 'lucide-react-native';
@@ -21,7 +21,8 @@ export default function Workers() {
       // Get jobs posted by this organization
       const jobsQuery = query(collection(db, 'jobs'), where('postedBy', '==', user.uid));
       const jobsSnapshot = await getDocs(jobsQuery);
-      const jobIds = jobsSnapshot.docs.map(doc => doc.id);
+      const jobs = jobsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const jobIds = jobs.map(job => job.id);
 
       if (jobIds.length === 0) {
         setAcceptedWorkers([]);
@@ -37,9 +38,15 @@ export default function Workers() {
       );
       const applicationsSnapshot = await getDocs(applicationsQuery);
       
-      const workersData = applicationsSnapshot.docs.map(doc => ({
+      const workersData = await Promise.all(applicationsSnapshot.docs.map(async (doc) => {
+        const appData = doc.data();
+        // Find the corresponding job to get salary info
+        const job = jobs.find(j => j.id === appData.jobId);
+        return {
         id: doc.id,
-        ...doc.data()
+          ...appData,
+          salary: job?.salary || 500 // Default daily rate if not found
+        };
       }));
 
       // Group by worker to avoid duplicates
@@ -54,6 +61,7 @@ export default function Workers() {
       setAcceptedWorkers(uniqueWorkers);
     } catch (error) {
       console.error('Error fetching accepted workers:', error);
+      Alert.alert('Error', 'Failed to fetch workers. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -62,7 +70,7 @@ export default function Workers() {
   const renderWorkerCard = ({ item }) => (
     <TouchableOpacity 
       style={styles.workerCard}
-      onPress={() => router.push(`/worker-calendar/${item.applicantId}?jobTitle=${item.jobTitle}&salary=${item.salary || 15000}`)}
+      onPress={() => router.push(`/worker-calendar/${item.applicantId}?jobTitle=${encodeURIComponent(item.jobTitle)}&salary=${item.salary || 500}`)}
     >
       <View style={styles.workerHeader}>
         <View style={styles.workerAvatar}>

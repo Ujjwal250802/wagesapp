@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { Briefcase, User, Plus, Search, FileText, Users, DollarSign } from 'lucide-react-native';
+import { Briefcase, User, Plus, Search, FileText, Users, DollarSign, List } from 'lucide-react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
@@ -78,6 +78,17 @@ export default function TabLayout() {
       )}
       {userType === 'organization' && (
         <Tabs.Screen
+          name="my-jobs"
+          options={{
+            title: 'My Jobs',
+            tabBarIcon: ({ size, color }) => (
+              <List size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {userType === 'organization' && (
+        <Tabs.Screen
           name="workers"
           options={{
             title: 'Workers',
@@ -113,6 +124,14 @@ export default function TabLayout() {
       {userType === 'worker' && (
         <Tabs.Screen
           name="post-job"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      )}
+      {userType === 'worker' && (
+        <Tabs.Screen
+          name="my-jobs"
           options={{
             href: null, // This hides the tab
           }}
