@@ -121,7 +121,7 @@ export default function MyJobs() {
         </TouchableOpacity>
         
         <TouchableOpacity 
-          <style={[styles.deleteButton, { backgroundColor: colors.background }]}
+          style={[styles.deleteButton, { backgroundColor: colors.background }]}
           onPress={() => handleDeleteJob(item.id, item.category)}
         >
           <Trash2 size={16} color={colors.error} />
