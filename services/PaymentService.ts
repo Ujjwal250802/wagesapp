@@ -1,4 +1,4 @@
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 
 export interface PaymentConfig {
   razorpay: {
@@ -105,7 +105,7 @@ class PaymentService {
   ) {
     const options = {
       key: this.config.razorpay.keyId,
-      amount: request.amount * 100, // Amount in paise
+      amount: request.amount * 100,
       currency: request.currency,
       name: 'ROZGAR',
       description: request.description,
@@ -117,14 +117,6 @@ class PaymentService {
       },
       theme: {
         color: '#2563EB',
-      },
-      method: {
-        netbanking: true,
-        card: true,
-        upi: true,
-        wallet: true,
-        emi: false,
-        paylater: false
       },
       handler: function (response: any) {
         resolve({
@@ -151,113 +143,56 @@ class PaymentService {
   }
 
   private async processRazorpayMobile(request: PaymentRequest): Promise<PaymentResponse> {
-    try {
-      // For mobile, we'll use a web view approach since native SDK requires development build
-      const options = {
-        description: request.description,
-        image: 'https://i.imgur.com/3g7nmJC.png',
-        currency: request.currency,
-        key: this.config.razorpay.keyId,
-        amount: request.amount * 100,
-        name: 'ROZGAR',
-        order_id: request.orderId,
-        prefill: {
-          email: request.customerInfo.email,
-          contact: request.customerInfo.phone,
-          name: request.customerInfo.name
-        },
-        theme: { color: '#2563EB' }
-      };
-
-      // For now, simulate successful payment on mobile
-      // In production, you'd use RazorpayCheckout.open(options)
-      return new Promise((resolve) => {
-        Alert.alert(
-          'Razorpay Payment',
-          'This would open Razorpay payment gateway with all payment options (UPI, Cards, Net Banking, Wallets)',
-          [
-            {
-              text: 'Cancel',
-              onPress: () => resolve({
-                success: false,
-                error: 'Payment cancelled',
-                method: 'razorpay'
-              })
-            },
-            {
-              text: 'Pay ₹' + request.amount,
-              onPress: () => resolve({
-                success: true,
-                paymentId: `rzp_mobile_${Date.now()}`,
-                orderId: request.orderId,
-                signature: `sig_${Date.now()}`,
-                method: 'razorpay',
-              })
-            }
-          ]
-        );
-      });
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message || 'Mobile payment failed',
-        method: 'razorpay',
-      };
-    }
+    // For mobile, you would integrate with @razorpay/react-native-razorpay
+    // This requires ejecting from Expo or using a development build
+    // For now, we'll simulate the payment
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          paymentId: `rzp_mobile_${Date.now()}`,
+          orderId: request.orderId,
+          method: 'razorpay',
+        });
+      }, 2000);
+    });
   }
 
   private async processPhonePeWeb(request: PaymentRequest): Promise<PaymentResponse> {
     try {
-      // Create PhonePe payment URL
-      const transactionId = request.merchantTransactionId;
-      const userId = request.merchantUserId;
+      // Create PhonePe payment request
+      const transactionId = `TXN_${Date.now()}`;
+      const userId = `USER_${Date.now()}`;
       
       const paymentData = {
-        merchantId: this.config.merchantId,
+        merchantId: this.config.phonepe.merchantId,
         merchantTransactionId: transactionId,
         merchantUserId: userId,
-        amount: request.amount * 100, // Convert to paise
-        redirectUrl: request.redirectUrl || `${window.location.origin}/payment-success`,
+        amount: request.amount * 100,
+        redirectUrl: `${window.location.origin}/payment-success`,
         redirectMode: 'POST',
-        callbackUrl: request.callbackUrl || `${window.location.origin}/payment-callback`,
+        callbackUrl: `${window.location.origin}/payment-callback`,
         mobileNumber: request.customerInfo.phone,
         paymentInstrument: {
           type: 'PAY_PAGE',
         },
       };
 
+      // Generate checksum (simplified for demo)
       const payload = JSON.stringify(paymentData);
       const payloadMain = btoa(payload);
-      const checksum = this.generatePhonePeChecksum(payloadMain);
+      const checksum = await this.generatePhonePeChecksum(payloadMain);
 
-      // For web, open PhonePe payment page
-      const paymentUrl = `${this.getBaseUrl()}/pg/v1/pay`;
-      
-      // Simulate PhonePe payment interface
+      // For demo purposes, we'll simulate the payment
       return new Promise((resolve) => {
-        Alert.alert(
-          'PhonePe Payment',
-          'This would redirect to PhonePe payment gateway with UPI, Cards, and Wallet options',
-          [
-            {
-              text: 'Cancel',
-              onPress: () => resolve({
-                success: false,
-                error: 'Payment cancelled',
-                method: 'phonepe'
-              })
-            },
-            {
-              text: 'Pay ₹' + request.amount,
-              onPress: () => resolve({
-                success: true,
-                paymentId: `phonepe_${Date.now()}`,
-                orderId: transactionId,
-                method: 'phonepe',
-              })
-            }
-          ]
-        );
+        setTimeout(() => {
+          resolve({
+            success: true,
+            paymentId: `phonepe_${Date.now()}`,
+            orderId: transactionId,
+            method: 'phonepe',
+          });
+        }, 2000);
       });
     } catch (error) {
       return {
@@ -268,51 +203,28 @@ class PaymentService {
     }
   }
 
-  private async processPhonePeMobile(request: PhonePePaymentRequest): Promise<PhonePePaymentResponse> {
-    // For mobile, simulate PhonePe SDK integration
+  private async processPhonePeMobile(request: PaymentRequest): Promise<PaymentResponse> {
+    // For mobile, you would integrate with PhonePe SDK
+    // For now, we'll simulate the payment
     return new Promise((resolve) => {
-      Alert.alert(
-        'PhonePe Payment',
-        'This would open PhonePe app with payment options',
-        [
-          {
-            text: 'Cancel',
-            onPress: () => resolve({
-              success: false,
-              message: 'Payment cancelled'
-            })
-          },
-          {
-            text: 'Pay ₹' + (request.amount),
-            onPress: () => resolve({
-              success: true,
-              code: 'PAYMENT_SUCCESS',
-              message: 'Payment completed successfully',
-              data: {
-                merchantId: this.config.merchantId,
-                merchantTransactionId: request.merchantTransactionId,
-                transactionId: `T${Date.now()}`,
-                amount: request.amount * 100,
-                state: 'COMPLETED',
-                responseCode: 'SUCCESS'
-              }
-            })
-          }
-        ]
-      );
+      setTimeout(() => {
+        resolve({
+          success: true,
+          paymentId: `phonepe_mobile_${Date.now()}`,
+          orderId: request.orderId,
+          method: 'phonepe',
+        });
+      }, 2000);
     });
   }
 
-  private getBaseUrl(): string {
-    return this.config.environment === 'production' 
-      ? 'https://api.phonepe.com/apis/hermes'
-      : 'https://api-preprod.phonepe.com/apis/pg-sandbox';
-  }
-
-  private generatePhonePeChecksum(payload: string): string {
-    const string = payload + '/pg/v1/pay' + this.config.saltKey;
-    const sha256 = CryptoJS.SHA256(string);
-    return sha256.toString(CryptoJS.enc.Hex) + '###' + this.config.saltIndex;
+  private async generatePhonePeChecksum(payload: string): Promise<string> {
+    // In a real implementation, this should be done on your backend
+    // This is a simplified version for demo purposes
+    const string = payload + '/pg/v1/pay' + this.config.phonepe.saltKey;
+    
+    // For demo, return a mock checksum
+    return `${btoa(string)}###${this.config.phonepe.saltIndex}`;
   }
 
   async verifyPayment(paymentId: string, method: 'razorpay' | 'phonepe'): Promise<boolean> {
