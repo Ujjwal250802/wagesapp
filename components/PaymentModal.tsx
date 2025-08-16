@@ -97,8 +97,8 @@ export default function PaymentModal({
         merchantUserId: `USER_${Date.now()}`,
         amount: paymentAmount,
         mobileNumber: '9999999999',
-        callbackUrl: `${window.location.origin}/payment-callback`,
-        redirectUrl: `${window.location.origin}/payment-success`,
+        callbackUrl: `${window.location?.origin || ''}/payment-callback`,
+        redirectUrl: `${window.location?.origin || ''}/payment-success`,
       };
 
       const result = await phonePeService.initiatePayment(phonePeRequest);
@@ -188,6 +188,9 @@ export default function PaymentModal({
                   <Text style={[styles.methodDescription, { color: colors.textSecondary }]}>
                     Cards, UPI, Net Banking, Wallets
                   </Text>
+                  <Text style={[styles.methodFeatures, { color: colors.textSecondary }]}>
+                    • Debit/Credit Cards • UPI • QR Code • Net Banking
+                  </Text>
                 </View>
               </TouchableOpacity>
 
@@ -213,8 +216,17 @@ export default function PaymentModal({
                   <Text style={[styles.methodDescription, { color: colors.textSecondary }]}>
                     UPI, Cards, Wallets
                   </Text>
+                  <Text style={[styles.methodFeatures, { color: colors.textSecondary }]}>
+                    • UPI • QR Code • Cards • Digital Wallets
+                  </Text>
                 </View>
               </TouchableOpacity>
+            </View>
+
+            <View style={[styles.securityNote, { backgroundColor: colors.background }]}>
+              <Text style={[styles.securityText, { color: colors.textSecondary }]}>
+                🔒 Your payment is secured with bank-level encryption
+              </Text>
             </View>
           </View>
 
@@ -319,7 +331,7 @@ const styles = StyleSheet.create({
   },
   methodButton: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 16,
     borderRadius: 12,
     gap: 16,
@@ -334,6 +346,20 @@ const styles = StyleSheet.create({
   },
   methodDescription: {
     fontSize: 12,
+    marginBottom: 4,
+  },
+  methodFeatures: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  securityNote: {
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  securityText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   modalFooter: {
     flexDirection: 'row',
