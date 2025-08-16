@@ -69,6 +69,50 @@ If you still get permission errors:
 - **Payment Processing**: Calculate and record payments
 - **Location Services**: Get directions to job locations
 - **Real-time Updates**: Live updates using Firebase
+- **Payments**: Razorpay and PhonePe integration
+
+## Payment Gateway Setup
+
+### Razorpay Integration
+
+The app uses Razorpay test API for payment processing:
+- **Key ID**: `rzp_test_uO9KUIRRmFD0rp`
+- **Key Secret**: `ZsmuBYvapWYZ4IkpMRWCZWpo`
+
+For production:
+1. Create a Razorpay account at [razorpay.com](https://razorpay.com)
+2. Get your live API keys from the dashboard
+3. Update the keys in `services/PaymentService.ts`
+4. Enable required payment methods in Razorpay dashboard
+
+### PhonePe Integration
+
+The app uses PhonePe test environment:
+- **Merchant ID**: `PGTESTPAYUAT`
+- **Salt Key**: `099eb0cd-02cf-4e2a-8aca-3e6c6aff0399`
+- **Salt Index**: `1`
+
+For production:
+1. Register as a merchant with PhonePe
+2. Get your production merchant credentials
+3. Update the credentials in `services/PhonePeService.ts`
+4. Implement proper backend verification
+
+### Security Notes
+
+- **Never expose API secrets in frontend code**
+- **Always verify payments on your backend**
+- **Use webhooks for payment confirmation**
+- **Implement proper error handling and retry logic**
+- **Store payment records securely in your database**
+
+### Mobile Implementation
+
+For mobile apps, you'll need to:
+1. **Razorpay**: Install `@razorpay/react-native-razorpay`
+2. **PhonePe**: Integrate PhonePe SDK
+3. **Create development build** using Expo Dev Client
+4. **Test on physical devices** (payment gateways don't work in simulators)
 
 ## Tech Stack
 

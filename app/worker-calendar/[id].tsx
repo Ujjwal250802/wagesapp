@@ -7,6 +7,8 @@ import { auth, db } from '../../firebase-config';
 import { ArrowLeft, DollarSign, Calendar as CalendarIcon, User, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import PaymentModal from '../../components/PaymentModal';
+import { paymentService, PaymentRequest } from '../../services/PaymentService';
 
 export default function WorkerCalendar() {
   const { id, jobTitle, salary } = useLocalSearchParams();
@@ -23,6 +25,7 @@ export default function WorkerCalendar() {
   const [monthlyTotal, setMonthlyTotal] = useState(0);
   const [workDays, setWorkDays] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
 
   useEffect(() => {
     if (workerId) {
@@ -252,93 +255,14 @@ export default function WorkerCalendar() {
       return;
     }
 
-    const user = auth.currentUser;
-    if (!user) return;
-
-    // Get organization details
-    let orgData = {};
-    try {
-      const orgDoc = await getDoc(doc(db, 'organizations', user.uid));
-      orgData = orgDoc.exists() ? orgDoc.data() : {};
-    } catch (error) {
-      console.log('Could not fetch organization data:', error);
-    }
-
-    if (Platform.OS === 'web') {
-      // Web implementation using Razorpay Checkout
-      await handleWebPayment(orgData);
-    } else {
-      // For now, simulate payment on mobile
-      Alert.alert(
-        'Payment Simulation',
-        `This would process payment of ₹${monthlyTotal} for ${workerData?.applicantName || workerData?.name}`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Simulate Payment', onPress: () => processPayment(`PAY_${Date.now()}`) }
-        ]
-      );
-    }
+    setPaymentModalVisible(true);
   };
 
-  const handleWebPayment = async (orgData) => {
-    try {
-      // Create Razorpay order (in a real app, this would be done on your backend)
-      const orderId = `order_${Date.now()}`;
-      
-      // Razorpay configuration
-      const options = {
-        key: 'rzp_test_uO9KUIRRmFD0rp',
-        amount: monthlyTotal * 100, // Amount in paise
-        currency: 'INR',
-        name: orgData.organizationName || 'WorkConnect',
-        description: `Payment for ${workerData?.applicantName || workerData?.name} - ${workerJobTitle}`,
-        order_id: orderId,
-        prefill: {
-          name: orgData.contactPerson || orgData.organizationName || 'Employer',
-          email: orgData.email || auth.currentUser?.email,
-          contact: orgData.phone || ''
-        },
-        theme: {
-          color: '#2563EB'
-        },
-        handler: function (response) {
-          console.log('Payment Success:', response);
-          processPayment(response.razorpay_payment_id);
-        },
-        modal: {
-          ondismiss: function() {
-            console.log('Payment cancelled');
-          }
-        }
-      };
-
-      // Load Razorpay script and open checkout
-      if (typeof window !== 'undefined') {
-        // Check if Razorpay script is already loaded
-        if (!window.Razorpay) {
-          // Load Razorpay script
-          const script = document.createElement('script');
-          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-          script.onload = () => {
-            const rzp = new window.Razorpay(options);
-            rzp.open();
-          };
-          script.onerror = () => {
-            Alert.alert('Error', 'Failed to load payment gateway');
-          };
-          document.body.appendChild(script);
-        } else {
-          const rzp = new window.Razorpay(options);
-          rzp.open();
-        }
-      }
-    } catch (error) {
-      console.error('Payment error:', error);
-      Alert.alert('Payment Error', 'Failed to initialize payment gateway');
-    }
+  const handlePaymentSuccess = async (paymentData: any) => {
+    await processPayment(paymentData.paymentId, paymentData.method, paymentData.amount);
   };
 
-  const processPayment = async (paymentId = null) => {
+  const processPayment = async (paymentId: string, method: string, amount: number) => {
     try {
       const user = auth.currentUser;
       if (!user) return;
@@ -365,14 +289,14 @@ export default function WorkerCalendar() {
         workerId: workerId,
         workerName: workerData?.applicantName || workerData?.name,
         jobTitle: workerJobTitle,
-        amount: monthlyTotal,
+        amount: amount,
         workDays: workDays,
         workPeriod: `${getMonthName(currentMonth)} ${currentYear}`,
-        paymentId: paymentId || `PAY_${Date.now()}`,
+        paymentId: paymentId,
         razorpayPaymentId: paymentId,
         paidAt: new Date(),
         status: 'completed',
-        paymentMethod: paymentId?.startsWith('pay_') ? 'razorpay' : 'simulation'
+        paymentMethod: method
       });
 
       // Reset attendance for next month
@@ -400,7 +324,7 @@ export default function WorkerCalendar() {
 
       Alert.alert(
         'Payment Successful!', 
-        `₹${monthlyTotal.toLocaleString()} has been paid to ${workerData?.applicantName || workerData?.name}`,
+        `₹${amount.toLocaleString()} has been paid to ${workerData?.applicantName || workerData?.name}`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error) {
@@ -529,6 +453,14 @@ export default function WorkerCalendar() {
             Pay ₹{monthlyTotal.toLocaleString()}
           </Text>
         </TouchableOpacity>
+
+        <PaymentModal
+          visible={paymentModalVisible}
+          onClose={() => setPaymentModalVisible(false)}
+          amount={monthlyTotal}
+          workerName={workerData?.applicantName || workerData?.name || 'Worker'}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
 
         <View style={styles.legend}>
           <Text style={styles.legendTitle}>Legend:</Text>
