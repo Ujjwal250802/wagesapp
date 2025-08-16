@@ -5,6 +5,10 @@ import { collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { Building, Mail, Phone, MapPin, DollarSign, FileText, Briefcase, Navigation } from 'lucide-react-native';
 import * as Location from 'expo-location';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 const JOB_CATEGORIES = [
   'Electrician', 'Plumber', 'Mechanic', 'Cook', 'Peon', 
@@ -12,6 +16,8 @@ const JOB_CATEGORIES = [
 ];
 
 export default function PostJob() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [organizationName, setOrganizationName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -76,6 +82,7 @@ export default function PostJob() {
         location,
         salary: parseInt(salary),
         coordinates: coordinates,
+        language: t('language') || 'en', // Store the language the job was posted in
         createdAt: new Date(),
         postedBy: auth.currentUser?.uid || 'anonymous',
       });
@@ -103,29 +110,39 @@ export default function PostJob() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Post a Job</Text>
-        <Text style={styles.headerSubtitle}>Find the right worker for your needs</Text>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerContent}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('postAJob')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('findRightWorker')}</Text>
+          </View>
+          <View style={styles.headerControls}>
+            <LanguageSelector />
+            <ThemeToggle />
+          </View>
+        </View>
       </View>
 
       <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Building size={20} color="#6B7280" style={styles.inputIcon} />
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Building size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
-            placeholder="Organization Name"
+            style={[styles.input, { color: colors.text }]}
+            placeholder={t('organizationName')}
+            placeholderTextColor={colors.textSecondary}
             value={organizationName}
             onChangeText={setOrganizationName}
             autoCapitalize="words"
           />
         </View>
 
-        <View style={styles.inputContainer}>
-          <Mail size={20} color="#6B7280" style={styles.inputIcon} />
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Mail size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
-            placeholder="Contact Email"
+            style={[styles.input, { color: colors.text }]}
+            placeholder={t('contactEmail')}
+            placeholderTextColor={colors.textSecondary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -133,47 +150,49 @@ export default function PostJob() {
           />
         </View>
 
-        <View style={styles.inputContainer}>
-          <Phone size={20} color="#6B7280" style={styles.inputIcon} />
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Phone size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
-            placeholder="Contact Number"
+            style={[styles.input, { color: colors.text }]}
+            placeholder={t('contactNumber')}
+            placeholderTextColor={colors.textSecondary}
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
           />
         </View>
 
-        <View style={styles.pickerContainer}>
-          <Briefcase size={20} color="#6B7280" style={styles.inputIcon} />
+        <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Briefcase size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <Picker
             selectedValue={category}
             onValueChange={setCategory}
-            style={styles.picker}
+            style={[styles.picker, { color: colors.text }]}
           >
-            <Picker.Item label="Select Job Category" value="" />
+            <Picker.Item label={t('selectJobCategory')} value="" />
             {JOB_CATEGORIES.map((cat) => (
-              <Picker.Item key={cat} label={cat} value={cat} />
+              <Picker.Item key={cat} label={t(cat.toLowerCase().replace(/\s+/g, ''))} value={cat} />
             ))}
           </Picker>
         </View>
 
-        <View style={styles.inputContainer}>
-          <MapPin size={20} color="#6B7280" style={styles.inputIcon} />
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <MapPin size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
-            placeholder="Job Location"
+            style={[styles.input, { color: colors.text }]}
+            placeholder={t('jobLocation')}
+            placeholderTextColor={colors.textSecondary}
             value={location}
             onChangeText={setLocation}
             autoCapitalize="words"
           />
         </View>
 
-        <View style={styles.locationToggleContainer}>
+        <View style={[styles.locationToggleContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.toggleRow}>
-            <Navigation size={20} color="#6B7280" />
-            <Text style={styles.toggleLabel}>
-              {gettingLocation ? 'Getting location...' : 'Use Current Location'}
+            <Navigation size={20} color={colors.textSecondary} />
+            <Text style={[styles.toggleLabel, { color: colors.text }]}>
+              {gettingLocation ? t('loading') : t('useCurrentLocation')}
             </Text>
             <Switch
               value={useCurrentLocation}
@@ -186,35 +205,37 @@ export default function PostJob() {
                 }
               }}
               disabled={gettingLocation}
-              trackColor={{ false: '#D1D5DB', true: '#2563EB' }}
+              trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={useCurrentLocation ? '#FFFFFF' : '#F3F4F6'}
             />
           </View>
           {coordinates && (
-            <View style={styles.coordinatesDisplay}>
-              <Text style={styles.coordinatesText}>
+            <View style={[styles.coordinatesDisplay, { backgroundColor: colors.background }]}>
+              <Text style={[styles.coordinatesText, { color: colors.primary }]}>
                 📍 Location saved: {coordinates.latitude.toFixed(4)}, {coordinates.longitude.toFixed(4)}
               </Text>
             </View>
           )}
         </View>
 
-        <View style={styles.inputContainer}>
-          <DollarSign size={20} color="#6B7280" style={styles.inputIcon} />
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <DollarSign size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
-            placeholder="Salary per day (₹)"
+            style={[styles.input, { color: colors.text }]}
+            placeholder={t('salaryPerDay')}
+            placeholderTextColor={colors.textSecondary}
             value={salary}
             onChangeText={setSalary}
             keyboardType="numeric"
           />
         </View>
 
-        <View style={[styles.inputContainer, styles.textAreaContainer]}>
-          <FileText size={20} color="#6B7280" style={[styles.inputIcon, styles.textAreaIcon]} />
+        <View style={[styles.inputContainer, styles.textAreaContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <FileText size={20} color={colors.textSecondary} style={[styles.inputIcon, styles.textAreaIcon]} />
           <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Job Description (requirements, working hours, etc.)"
+            style={[styles.input, styles.textArea, { color: colors.text }]}
+            placeholder={t('jobDescriptionPlaceholder')}
+            placeholderTextColor={colors.textSecondary}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -224,12 +245,12 @@ export default function PostJob() {
         </View>
 
         <TouchableOpacity 
-          style={styles.postButton}
+          style={[styles.postButton, { backgroundColor: colors.secondary }]}
           onPress={handlePostJob}
           disabled={loading}
         >
           <Text style={styles.postButtonText}>
-            {loading ? 'Posting Job...' : 'Post Job'}
+            {loading ? t('postingJob') : t('postJobButton')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -240,21 +261,30 @@ export default function PostJob() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: '#FFFFFF',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    gap: 12,
+    marginLeft: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 4,
   },
   form: {
@@ -265,10 +295,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
   },
   textAreaContainer: {
     alignItems: 'flex-start',
@@ -284,7 +312,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 56,
     fontSize: 16,
-    color: '#111827',
   },
   textArea: {
     height: 120,
@@ -294,17 +321,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
   },
   picker: {
     flex: 1,
     height: 56,
   },
   postButton: {
-    backgroundColor: '#16A34A',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -316,9 +340,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   locationToggleContainer: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -331,17 +353,14 @@ const styles = StyleSheet.create({
   toggleLabel: {
     flex: 1,
     fontSize: 16,
-    color: '#374151',
   },
   coordinatesDisplay: {
     marginTop: 8,
     padding: 8,
-    backgroundColor: '#F0FDF4',
     borderRadius: 6,
   },
   coordinatesText: {
     fontSize: 12,
-    color: '#166534',
     fontFamily: 'monospace',
   },
 });

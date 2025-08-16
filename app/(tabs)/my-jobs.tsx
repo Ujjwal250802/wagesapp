@@ -4,8 +4,14 @@ import { collection, getDocs, query, where, doc, deleteDoc } from 'firebase/fire
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
 import { Briefcase, MapPin, Clock, DollarSign, Trash2, Users, Eye } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 export default function MyJobs() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -72,26 +78,26 @@ export default function MyJobs() {
   };
 
   const renderJobCard = ({ item }) => (
-    <View style={styles.jobCard}>
+    <View style={[styles.jobCard, { backgroundColor: colors.surface }]}>
       <View style={styles.jobHeader}>
-        <Text style={styles.jobTitle}>{item.category}</Text>
+        <Text style={[styles.jobTitle, { color: colors.text }]}>{t(item.category.toLowerCase().replace(/\s+/g, ''))}</Text>
         <View style={styles.salaryContainer}>
           <DollarSign size={16} color="#16A34A" />
-          <Text style={styles.salary}>₹{item.salary}/day</Text>
+          <Text style={[styles.salary, { color: colors.text }]}>₹{item.salary}/day</Text>
         </View>
       </View>
       
-      <Text style={styles.organizationName}>{item.organizationName}</Text>
-      <Text style={styles.jobDescription} numberOfLines={2}>{item.description}</Text>
+      <Text style={[styles.organizationName, { color: colors.textSecondary }]}>{item.organizationName}</Text>
+      <Text style={[styles.jobDescription, { color: colors.text }]} numberOfLines={2}>{item.description}</Text>
       
       <View style={styles.jobFooter}>
         <View style={styles.locationContainer}>
-          <MapPin size={14} color="#6B7280" />
-          <Text style={styles.location}>{item.location}</Text>
+          <MapPin size={14} color={colors.textSecondary} />
+          <Text style={[styles.location, { color: colors.textSecondary }]}>{item.location}</Text>
         </View>
         <View style={styles.timeContainer}>
-          <Clock size={14} color="#6B7280" />
-          <Text style={styles.time}>
+          <Clock size={14} color={colors.textSecondary} />
+          <Text style={[styles.time, { color: colors.textSecondary }]}>
             {new Date(item.createdAt?.toDate()).toLocaleDateString()}
           </Text>
         </View>
@@ -99,27 +105,27 @@ export default function MyJobs() {
 
       <View style={styles.actionButtons}>
         <TouchableOpacity 
-          style={styles.viewButton}
+          style={[styles.viewButton, { backgroundColor: colors.background }]}
           onPress={() => router.push(`/job-details/${item.id}`)}
         >
-          <Eye size={16} color="#2563EB" />
-          <Text style={styles.viewButtonText}>View</Text>
+          <Eye size={16} color={colors.primary} />
+          <Text style={[styles.viewButtonText, { color: colors.primary }]}>{t('view')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={styles.applicationsButton}
+          style={[styles.applicationsButton, { backgroundColor: colors.background }]}
           onPress={() => router.push(`/job-applications/${item.id}`)}
         >
-          <Users size={16} color="#16A34A" />
-          <Text style={styles.applicationsButtonText}>Applications</Text>
+          <Users size={16} color={colors.secondary} />
+          <Text style={[styles.applicationsButtonText, { color: colors.secondary }]}>{t('applicationsCount')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={styles.deleteButton}
+          <style={[styles.deleteButton, { backgroundColor: colors.background }]}
           onPress={() => handleDeleteJob(item.id, item.category)}
         >
-          <Trash2 size={16} color="#EF4444" />
-          <Text style={styles.deleteButtonText}>Delete</Text>
+          <Trash2 size={16} color={colors.error} />
+          <Text style={[styles.deleteButtonText, { color: colors.error }]}>{t('delete')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -127,29 +133,37 @@ export default function MyJobs() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading your jobs...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.text }]}>{t('loading')}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Posted Jobs</Text>
-        <Text style={styles.headerSubtitle}>Manage your job postings</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerContent}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('myPostedJobs')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('manageJobPostings')}</Text>
+          </View>
+          <View style={styles.headerControls}>
+            <LanguageSelector />
+            <ThemeToggle />
+          </View>
+        </View>
       </View>
 
       {jobs.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
           <Briefcase size={48} color="#D1D5DB" />
-          <Text style={styles.emptyText}>No jobs posted yet</Text>
-          <Text style={styles.emptySubtext}>Start posting jobs to find workers</Text>
+          <Text style={[styles.emptyText, { color: colors.text }]}>{t('noJobsPosted')}</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('startPostingJobs')}</Text>
           <TouchableOpacity 
-            style={styles.postJobButton}
+            style={[styles.postJobButton, { backgroundColor: colors.secondary }]}
             onPress={() => router.push('/(tabs)/post-job')}
           >
-            <Text style={styles.postJobButtonText}>Post Your First Job</Text>
+            <Text style={styles.postJobButtonText}>{t('postFirstJob')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -168,28 +182,36 @@ export default function MyJobs() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: '#FFFFFF',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    gap: 12,
+    marginLeft: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 4,
   },
   jobsList: {
     padding: 20,
   },
   jobCard: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -208,7 +230,6 @@ const styles = StyleSheet.create({
   jobTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     flex: 1,
   },
   salaryContainer: {
@@ -219,16 +240,13 @@ const styles = StyleSheet.create({
   salary: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#16A34A',
   },
   organizationName: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 8,
   },
   jobDescription: {
     fontSize: 14,
-    color: '#374151',
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -245,7 +263,6 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 12,
-    color: '#6B7280',
   },
   timeContainer: {
     flexDirection: 'row',
@@ -254,7 +271,6 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
-    color: '#6B7280',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -271,11 +287,9 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 8,
     borderRadius: 6,
-    backgroundColor: '#EBF4FF',
   },
   viewButtonText: {
     fontSize: 12,
-    color: '#2563EB',
     fontWeight: '500',
   },
   applicationsButton: {
@@ -286,11 +300,9 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 8,
     borderRadius: 6,
-    backgroundColor: '#F0FDF4',
   },
   applicationsButtonText: {
     fontSize: 12,
-    color: '#16A34A',
     fontWeight: '500',
   },
   deleteButton: {
@@ -301,17 +313,18 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 8,
     borderRadius: 6,
-    backgroundColor: '#FEF2F2',
   },
   deleteButtonText: {
     fontSize: 12,
-    color: '#EF4444',
     fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,
@@ -322,19 +335,16 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
   },
   postJobButton: {
-    backgroundColor: '#16A34A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

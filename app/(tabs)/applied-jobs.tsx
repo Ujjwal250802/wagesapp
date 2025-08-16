@@ -4,8 +4,14 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
 import { Briefcase, MapPin, Clock, DollarSign } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 export default function AppliedJobs() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [appliedJobs, setAppliedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,11 +52,11 @@ export default function AppliedJobs() {
 
   const renderAppliedJobCard = ({ item }) => (
     <TouchableOpacity 
-      style={styles.jobCard}
+      style={[styles.jobCard, { backgroundColor: colors.surface }]}
       onPress={() => router.push(`/job-details/${item.jobId}`)}
     >
       <View style={styles.jobHeader}>
-        <Text style={styles.jobTitle}>{item.jobTitle}</Text>
+        <Text style={[styles.jobTitle, { color: colors.text }]}>{item.jobTitle}</Text>
         <View style={[styles.statusBadge, 
           item.status === 'accepted' && styles.acceptedBadge,
           item.status === 'rejected' && styles.rejectedBadge
@@ -64,13 +70,13 @@ export default function AppliedJobs() {
         </View>
       </View>
       
-      <Text style={styles.organizationName}>{item.organizationName}</Text>
+      <Text style={[styles.organizationName, { color: colors.textSecondary }]}>{item.organizationName}</Text>
       
       <View style={styles.jobFooter}>
         <View style={styles.appliedContainer}>
           <Clock size={14} color="#6B7280" />
-          <Text style={styles.appliedDate}>
-            Applied: {new Date(item.appliedAt?.toDate()).toLocaleDateString()}
+          <Text style={[styles.appliedDate, { color: colors.textSecondary }]}>
+            {t('appliedOn')}: {new Date(item.appliedAt?.toDate()).toLocaleDateString()}
           </Text>
         </View>
       </View>
@@ -79,24 +85,32 @@ export default function AppliedJobs() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading applied jobs...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.text }]}>{t('loading')}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Applied Jobs</Text>
-        <Text style={styles.headerSubtitle}>Track your job applications</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerContent}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('appliedJobsTitle')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('trackApplications')}</Text>
+          </View>
+          <View style={styles.headerControls}>
+            <LanguageSelector />
+            <ThemeToggle />
+          </View>
+        </View>
       </View>
 
       {appliedJobs.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
           <Briefcase size={48} color="#D1D5DB" />
-          <Text style={styles.emptyText}>No applications yet</Text>
-          <Text style={styles.emptySubtext}>Start applying to jobs to see them here</Text>
+          <Text style={[styles.emptyText, { color: colors.text }]}>{t('noApplicationsYetWorker')}</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('startApplyingJobs')}</Text>
         </View>
       ) : (
         <FlatList
@@ -114,28 +128,36 @@ export default function AppliedJobs() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: '#FFFFFF',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    gap: 12,
+    marginLeft: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 4,
   },
   jobsList: {
     padding: 20,
   },
   jobCard: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -154,7 +176,6 @@ const styles = StyleSheet.create({
   jobTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     flex: 1,
   },
   statusBadge: {
@@ -183,7 +204,6 @@ const styles = StyleSheet.create({
   },
   organizationName: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 12,
   },
   jobFooter: {
@@ -198,12 +218,14 @@ const styles = StyleSheet.create({
   },
   appliedDate: {
     fontSize: 12,
-    color: '#6B7280',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,
@@ -214,13 +236,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
   },

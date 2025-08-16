@@ -9,7 +9,7 @@ export default function LanguageSelector() {
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
 
-  const languages: Language[] = ['en', 'hi', 'mr', 'pa', 'gu'];
+  const languages: Language[] = ['en', 'hi', 'mr', 'pa', 'gu', 'bn', 'te', 'kn', 'bh'];
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);

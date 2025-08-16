@@ -5,8 +5,14 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
 import { User, LogOut, CreditCard as Edit, Briefcase, Building, Mail, Phone } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 export default function Profile() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,15 +56,19 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading profile...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.text }]}>{t('loading')}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View style={styles.headerControls}>
+          <LanguageSelector />
+          <ThemeToggle />
+        </View>
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
             {userProfile?.profileImage ? (
@@ -72,50 +82,53 @@ export default function Profile() {
           </Text>
           <Text style={styles.profileEmail}>{userProfile?.email}</Text>
           <Text style={styles.userType}>
-            {userProfile?.userType === 'worker' ? 'Job Seeker' : 'Employer'}
+            {userProfile?.userType === 'worker' ? t('jobSeeker') : t('employer')}
           </Text>
         </View>
       </View>
 
       <View style={styles.content}>
         {userProfile?.bio && (
-          <View style={styles.bioSection}>
-            <Text style={styles.bioTitle}>About</Text>
-            <Text style={styles.bioText}>{userProfile.bio}</Text>
+          <View style={[styles.bioSection, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.bioTitle, { color: colors.text }]}>{t('about')}</Text>
+            <Text style={[styles.bioText, { color: colors.textSecondary }]}>{userProfile.bio}</Text>
           </View>
         )}
 
-        <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Contact Information</Text>
+        <View style={[styles.infoSection, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('contactInformation')}</Text>
           <View style={styles.infoItem}>
-            <Mail size={16} color="#6B7280" />
-            <Text style={styles.infoText}>{userProfile?.email}</Text>
+            <Mail size={16} color={colors.textSecondary} />
+            <Text style={[styles.infoText, { color: colors.text }]}>{userProfile?.email}</Text>
           </View>
           {userProfile?.phone && (
             <View style={styles.infoItem}>
-              <Phone size={16} color="#6B7280" />
-              <Text style={styles.infoText}>{userProfile.phone}</Text>
+              <Phone size={16} color={colors.textSecondary} />
+              <Text style={[styles.infoText, { color: colors.text }]}>{userProfile.phone}</Text>
             </View>
           )}
           {userProfile?.userType === 'organization' && userProfile?.contactPerson && (
             <View style={styles.infoItem}>
-              <User size={16} color="#6B7280" />
-              <Text style={styles.infoText}>{userProfile.contactPerson}</Text>
+              <User size={16} color={colors.textSecondary} />
+              <Text style={[styles.infoText, { color: colors.text }]}>{userProfile.contactPerson}</Text>
             </View>
           )}
         </View>
 
         <TouchableOpacity 
-          style={styles.actionButton}
+          style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => router.push('/edit-profile')}
         >
-          <Edit size={20} color="#2563EB" />
-          <Text style={styles.actionButtonText}>Edit Profile</Text>
+          <Edit size={20} color={colors.primary} />
+          <Text style={[styles.actionButtonText, { color: colors.primary }]}>{t('editProfile')}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+        <TouchableOpacity 
+          style={[styles.signOutButton, { backgroundColor: colors.surface, borderColor: colors.error }]}
+          onPress={handleSignOut}
+        >
           <LogOut size={20} color="#EF4444" />
-          <Text style={styles.signOutButtonText}>Sign Out</Text>
+          <Text style={styles.signOutButtonText}>{t('signOut')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -125,18 +138,25 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    fontSize: 16,
+  },
   header: {
-    backgroundColor: '#2563EB',
     paddingTop: 60,
     paddingBottom: 40,
     paddingHorizontal: 20,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginBottom: 20,
   },
   profileSection: {
     alignItems: 'center',
@@ -180,7 +200,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bioSection: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -188,16 +207,13 @@ const styles = StyleSheet.create({
   bioTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 8,
   },
   bioText: {
     fontSize: 14,
-    color: '#6B7280',
     lineHeight: 20,
   },
   infoSection: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -205,7 +221,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 12,
   },
   infoItem: {
@@ -216,12 +231,10 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#374151',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     gap: 12,
@@ -230,22 +243,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    borderWidth: 1,
   },
   actionButtonText: {
     fontSize: 16,
-    color: '#2563EB',
     fontWeight: '500',
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     gap: 12,
     marginTop: 20,
     borderWidth: 1,
-    borderColor: '#FEE2E2',
   },
   signOutButtonText: {
     fontSize: 16,

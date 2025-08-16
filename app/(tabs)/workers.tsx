@@ -4,8 +4,14 @@ import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firesto
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
 import { User, Briefcase, Calendar, Clock } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 export default function Workers() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [acceptedWorkers, setAcceptedWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -69,23 +75,23 @@ export default function Workers() {
 
   const renderWorkerCard = ({ item }) => (
     <TouchableOpacity 
-      style={styles.workerCard}
+      style={[styles.workerCard, { backgroundColor: colors.surface }]}
       onPress={() => router.push(`/worker-calendar/${item.applicantId}?jobTitle=${encodeURIComponent(item.jobTitle)}&salary=${item.salary || 500}`)}
     >
       <View style={styles.workerHeader}>
-        <View style={styles.workerAvatar}>
-          <User size={24} color="#2563EB" />
+        <View style={[styles.workerAvatar, { backgroundColor: colors.background }]}>
+          <User size={24} color={colors.primary} />
         </View>
         <View style={styles.workerInfo}>
-          <Text style={styles.workerName}>{item.applicantName}</Text>
+          <Text style={[styles.workerName, { color: colors.text }]}>{item.applicantName}</Text>
           <View style={styles.jobInfo}>
-            <Briefcase size={16} color="#6B7280" />
-            <Text style={styles.jobTitle}>{item.jobTitle}</Text>
+            <Briefcase size={16} color={colors.textSecondary} />
+            <Text style={[styles.jobTitle, { color: colors.textSecondary }]}>{item.jobTitle}</Text>
           </View>
           <View style={styles.dateInfo}>
-            <Calendar size={16} color="#16A34A" />
-            <Text style={styles.acceptedDate}>
-              Joined: {new Date(item.appliedAt?.toDate()).toLocaleDateString()}
+            <Calendar size={16} color={colors.secondary} />
+            <Text style={[styles.acceptedDate, { color: colors.secondary }]}>
+              {t('joined')}: {new Date(item.appliedAt?.toDate()).toLocaleDateString()}
             </Text>
           </View>
         </View>
@@ -93,11 +99,11 @@ export default function Workers() {
       
       <View style={styles.workerFooter}>
         <View style={styles.contactInfo}>
-          <Text style={styles.phoneNumber}>{item.applicantPhone}</Text>
-          <Text style={styles.experience}>{item.experience} years exp.</Text>
+          <Text style={[styles.phoneNumber, { color: colors.text }]}>{item.applicantPhone}</Text>
+          <Text style={[styles.experience, { color: colors.textSecondary }]}>{item.experience} {t('yearsExp')}</Text>
         </View>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>Active</Text>
+        <View style={[styles.statusBadge, { backgroundColor: colors.background }]}>
+          <Text style={[styles.statusText, { color: colors.secondary }]}>{t('active')}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -105,24 +111,32 @@ export default function Workers() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading workers...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.text }]}>{t('loading')}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Workers</Text>
-        <Text style={styles.headerSubtitle}>Manage your accepted workers</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerContent}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('myWorkers')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('manageAcceptedWorkers')}</Text>
+          </View>
+          <View style={styles.headerControls}>
+            <LanguageSelector />
+            <ThemeToggle />
+          </View>
+        </View>
       </View>
 
       {acceptedWorkers.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
           <User size={48} color="#D1D5DB" />
-          <Text style={styles.emptyText}>No workers yet</Text>
-          <Text style={styles.emptySubtext}>Workers will appear here when you accept their applications</Text>
+          <Text style={[styles.emptyText, { color: colors.text }]}>{t('noWorkersYet')}</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('workersWillAppear')}</Text>
         </View>
       ) : (
         <FlatList
@@ -140,28 +154,36 @@ export default function Workers() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: '#FFFFFF',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    gap: 12,
+    marginLeft: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 4,
   },
   workersList: {
     padding: 20,
   },
   workerCard: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -180,7 +202,6 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#EBF4FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -191,7 +212,6 @@ const styles = StyleSheet.create({
   workerName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 4,
   },
   jobInfo: {
@@ -202,7 +222,6 @@ const styles = StyleSheet.create({
   },
   jobTitle: {
     fontSize: 14,
-    color: '#6B7280',
   },
   dateInfo: {
     flexDirection: 'row',
@@ -211,7 +230,6 @@ const styles = StyleSheet.create({
   },
   acceptedDate: {
     fontSize: 12,
-    color: '#16A34A',
   },
   workerFooter: {
     flexDirection: 'row',
@@ -226,15 +244,12 @@ const styles = StyleSheet.create({
   },
   phoneNumber: {
     fontSize: 14,
-    color: '#374151',
     marginBottom: 2,
   },
   experience: {
     fontSize: 12,
-    color: '#6B7280',
   },
   statusBadge: {
-    backgroundColor: '#D1FAE5',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -242,12 +257,14 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#065F46',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,
@@ -258,13 +275,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
   },

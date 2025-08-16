@@ -3,8 +3,14 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { DollarSign, Calendar, Building, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import ThemeToggle from '../../components/ThemeToggle';
+import LanguageSelector from '../../components/LanguageSelector';
 
 export default function Payments() {
+  const { colors } = useTheme();
+  const { t } = useLanguage();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalEarnings, setTotalEarnings] = useState(0);
@@ -50,14 +56,14 @@ export default function Payments() {
   };
 
   const renderPaymentCard = ({ item }) => (
-    <View style={styles.paymentCard}>
+    <View style={[styles.paymentCard, { backgroundColor: colors.surface }]}>
       <View style={styles.paymentHeader}>
         <View style={styles.paymentIcon}>
           <DollarSign size={24} color="#16A34A" />
         </View>
         <View style={styles.paymentInfo}>
-          <Text style={styles.amount}>₹{item.amount.toLocaleString()}</Text>
-          <Text style={styles.jobTitle}>{item.jobTitle}</Text>
+          <Text style={[styles.amount, { color: colors.text }]}>₹{item.amount.toLocaleString()}</Text>
+          <Text style={[styles.jobTitle, { color: colors.textSecondary }]}>{item.jobTitle}</Text>
         </View>
         <View style={styles.statusIcon}>
           <CheckCircle size={20} color="#16A34A" />
@@ -67,18 +73,18 @@ export default function Payments() {
       <View style={styles.paymentDetails}>
         <View style={styles.detailRow}>
           <Building size={16} color="#6B7280" />
-          <Text style={styles.detailText}>{item.employerName || 'Employer'}</Text>
+          <Text style={[styles.detailText, { color: colors.text }]}>{item.employerName || 'Employer'}</Text>
         </View>
         <View style={styles.detailRow}>
           <Calendar size={16} color="#6B7280" />
-          <Text style={styles.detailText}>
+          <Text style={[styles.detailText, { color: colors.text }]}>
             {item.workPeriod || 'Work Period'} • Paid on {item.paidAt ? new Date(item.paidAt.toDate()).toLocaleDateString() : 'N/A'}
           </Text>
         </View>
         {item.paymentMethod && (
           <View style={styles.detailRow}>
             <DollarSign size={16} color="#6B7280" />
-            <Text style={styles.detailText}>
+            <Text style={[styles.detailText, { color: colors.text }]}>
               Payment Method: {item.paymentMethod === 'razorpay' ? 'Razorpay' : item.paymentMethod}
             </Text>
           </View>
@@ -86,45 +92,53 @@ export default function Payments() {
       </View>
       
       <View style={styles.paymentFooter}>
-        <Text style={styles.workDays}>Work Days: {item.workDays || 0}</Text>
-        <Text style={styles.paymentId}>ID: {item.razorpayPaymentId || item.paymentId || 'N/A'}</Text>
+        <Text style={[styles.workDays, { color: colors.textSecondary }]}>{t('workDays')}: {item.workDays || 0}</Text>
+        <Text style={[styles.paymentId, { color: colors.textSecondary }]}>ID: {item.razorpayPaymentId || item.paymentId || 'N/A'}</Text>
       </View>
     </View>
   );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading payments...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.text }]}>{t('loading')}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Payments</Text>
-        <Text style={styles.headerSubtitle}>Track your earnings</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerContent}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('myPayments')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('trackEarnings')}</Text>
+          </View>
+          <View style={styles.headerControls}>
+            <LanguageSelector />
+            <ThemeToggle />
+          </View>
+        </View>
       </View>
 
-      <View style={styles.earningsCard}>
+      <View style={[styles.earningsCard, { backgroundColor: colors.surface }]}>
         <View style={styles.earningsHeader}>
           <DollarSign size={32} color="#16A34A" />
           <View style={styles.earningsInfo}>
-            <Text style={styles.earningsLabel}>Total Earnings</Text>
-            <Text style={styles.earningsAmount}>₹{totalEarnings.toLocaleString()}</Text>
+            <Text style={[styles.earningsLabel, { color: colors.textSecondary }]}>{t('totalEarnings')}</Text>
+            <Text style={[styles.earningsAmount, { color: colors.text }]}>₹{totalEarnings.toLocaleString()}</Text>
           </View>
         </View>
-        <Text style={styles.earningsSubtext}>
-          From {payments.length} payment{payments.length !== 1 ? 's' : ''}
+        <Text style={[styles.earningsSubtext, { color: colors.textSecondary }]}>
+          {t('fromPayments')} {payments.length} {payments.length === 1 ? t('payment') : t('payments')}
         </Text>
       </View>
 
       {payments.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
           <DollarSign size={48} color="#D1D5DB" />
-          <Text style={styles.emptyText}>No payments yet</Text>
-          <Text style={styles.emptySubtext}>Your payment history will appear here</Text>
+          <Text style={[styles.emptyText, { color: colors.text }]}>{t('noPaymentsYet')}</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('paymentHistoryAppear')}</Text>
         </View>
       ) : (
         <FlatList
@@ -142,25 +156,33 @@ export default function Payments() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: '#FFFFFF',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    gap: 12,
+    marginLeft: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 4,
   },
   earningsCard: {
-    backgroundColor: '#FFFFFF',
     margin: 20,
     padding: 20,
     borderRadius: 12,
@@ -181,24 +203,20 @@ const styles = StyleSheet.create({
   },
   earningsLabel: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   earningsAmount: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#16A34A',
   },
   earningsSubtext: {
     fontSize: 14,
-    color: '#6B7280',
   },
   paymentsList: {
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
   paymentCard: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -228,12 +246,10 @@ const styles = StyleSheet.create({
   amount: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#16A34A',
     marginBottom: 2,
   },
   jobTitle: {
     fontSize: 14,
-    color: '#6B7280',
   },
   statusIcon: {
     marginLeft: 8,
@@ -249,7 +265,6 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#374151',
     flex: 1,
   },
   paymentFooter: {
@@ -262,17 +277,18 @@ const styles = StyleSheet.create({
   },
   workDays: {
     fontSize: 12,
-    color: '#6B7280',
   },
   paymentId: {
     fontSize: 12,
-    color: '#6B7280',
     fontFamily: 'monospace',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,
@@ -283,13 +299,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
   },
