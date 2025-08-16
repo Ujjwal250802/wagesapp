@@ -275,7 +275,7 @@ export default function MainScreen() {
             { color: colors.textSecondary },
             selectedCategory === 'All' && { color: '#FFFFFF' }
           ]}>
-            {t(category.toLowerCase().replace(/\s+/g, '').replace(/\s/g, ''))}
+            {t('allJobs')}
           </Text>
         </TouchableOpacity>
         {JOB_CATEGORIES.map((category) => (

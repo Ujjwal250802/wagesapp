@@ -60,6 +60,7 @@ const translations = {
     jobApplications: 'Job Applications',
     manageApplications: 'Manage applications for your posted jobs',
     allJobs: 'All Jobs',
+    allJobs: 'All Jobs',
     noJobsAvailable: 'No jobs available',
     checkBackLater: 'Check back later for new opportunities',
     noApplicationsYet: 'No applications yet',
@@ -209,6 +210,7 @@ const translations = {
     findPerfectJob: 'अपनी परफेक्ट दैनिक मजदूरी की नौकरी खोजें',
     jobApplications: 'नौकरी के आवेदन',
     manageApplications: 'अपनी पोस्ट की गई नौकरियों के लिए आवेदनों का प्रबंधन करें',
+    allJobs: 'सभी नौकरियां',
     allJobs: 'सभी नौकरियां',
     noJobsAvailable: 'कोई नौकरी उपलब्ध नहीं',
     checkBackLater: 'नए अवसरों के लिए बाद में जांचें',
@@ -360,6 +362,7 @@ const translations = {
     jobApplications: 'नोकरीचे अर्ज',
     manageApplications: 'तुमच्या पोस्ट केलेल्या नोकऱ्यांसाठी अर्जांचे व्यवस्थापन करा',
     allJobs: 'सर्व नोकऱ्या',
+    allJobs: 'सर्व नोकऱ्या',
     noJobsAvailable: 'कोणत्याही नोकऱ्या उपलब्ध नाहीत',
     checkBackLater: 'नवीन संधींसाठी नंतर तपासा',
     noApplicationsYet: 'अद्याप कोणते अर्ज नाहीत',
@@ -510,6 +513,7 @@ const translations = {
     jobApplications: 'ਨੌਕਰੀ ਦੀਆਂ ਅਰਜ਼ੀਆਂ',
     manageApplications: 'ਆਪਣੀਆਂ ਪੋਸਟ ਕੀਤੀਆਂ ਨੌਕਰੀਆਂ ਲਈ ਅਰਜ਼ੀਆਂ ਦਾ ਪ੍ਰਬੰਧਨ ਕਰੋ',
     allJobs: 'ਸਾਰੀਆਂ ਨੌਕਰੀਆਂ',
+    allJobs: 'ਸਾਰੀਆਂ ਨੌਕਰੀਆਂ',
     noJobsAvailable: 'ਕੋਈ ਨੌਕਰੀ ਉਪਲਬਧ ਨਹੀਂ',
     checkBackLater: 'ਨਵੇਂ ਮੌਕਿਆਂ ਲਈ ਬਾਅਦ ਵਿੱਚ ਜਾਂਚ ਕਰੋ',
     noApplicationsYet: 'ਅਜੇ ਤੱਕ ਕੋਈ ਅਰਜ਼ੀ ਨਹੀਂ',
@@ -605,6 +609,7 @@ const translations = {
     jobApplications: 'નોકરીની અરજીઓ',
     manageApplications: 'તમારી પોસ્ટ કરેલી નોકરીઓ માટે અરજીઓનું સંચાલન કરો',
     allJobs: 'બધી નોકરીઓ',
+    allJobs: 'બધી નોકરીઓ',
     noJobsAvailable: 'કોઈ નોકરી ઉપલબ્ધ નથી',
     checkBackLater: 'નવી તકો માટે પછીથી તપાસો',
     noApplicationsYet: 'હજુ સુધી કોઈ અરજી નથી',
@@ -693,6 +698,17 @@ const translations = {
     housekeeping: 'হাউস কিপিং',
     constructionsiteworkers: 'নির্মাণ সাইট শ্রমিক',
     securityguard: 'নিরাপত্তা প্রহরী',
+    
+    // Home Screen
+    availableJobs: 'উপলব্ধ কাজ',
+    findPerfectJob: 'আপনার নিখুঁত দৈনিক মজুরির কাজ খুঁজুন',
+    jobApplications: 'কাজের আবেদন',
+    manageApplications: 'আপনার পোস্ট করা কাজের জন্য আবেদনগুলি পরিচালনা করুন',
+    allJobs: 'সব কাজ',
+    noJobsAvailable: 'কোন কাজ উপলব্ধ নেই',
+    checkBackLater: 'নতুন সুযোগের জন্য পরে চেক করুন',
+    noApplicationsYet: 'এখনও কোন আবেদন নেই',
+    applicationsWillAppear: 'যখন চাকরি প্রার্থীরা আপনার পোস্ট করা কাজের জন্য আবেদন করবে তখন আবেদনগুলি এখানে দেখা যাবে',
     
     // Home Screen
     availableJobs: 'উপলব্ধ কাজ',
@@ -836,6 +852,17 @@ const translations = {
     constructionsiteworkers: 'ನಿರ್ಮಾಣ ಸೈಟ್ ಕೆಲಸಗಾರರು',
     securityguard: 'ಸೆಕ್ಯೂರಿಟಿ ಗಾರ್ಡ್',
     
+    // Home Screen
+    availableJobs: 'ಲಭ್ಯವಿರುವ ಕೆಲಸಗಳು',
+    findPerfectJob: 'ನಿಮ್ಮ ಪರಿಪೂರ್ಣ ದೈನಂದಿನ ಕೂಲಿ ಕೆಲಸವನ್ನು ಹುಡುಕಿ',
+    jobApplications: 'ಕೆಲಸದ ಅರ್ಜಿಗಳು',
+    manageApplications: 'ನಿಮ್ಮ ಪೋಸ್ಟ್ ಮಾಡಿದ ಕೆಲಸಗಳಿಗೆ ಅರ್ಜಿಗಳನ್ನು ನಿರ್ವಹಿಸಿ',
+    allJobs: 'ಎಲ್ಲಾ ಕೆಲಸಗಳು',
+    noJobsAvailable: 'ಯಾವುದೇ ಕೆಲಸ ಲಭ್ಯವಿಲ್ಲ',
+    checkBackLater: 'ಹೊಸ ಅವಕಾಶಗಳಿಗಾಗಿ ನಂತರ ಪರಿಶೀಲಿಸಿ',
+    noApplicationsYet: 'ಇನ್ನೂ ಯಾವುದೇ ಅರ್ಜಿಗಳಿಲ್ಲ',
+    applicationsWillAppear: 'ಕೆಲಸ ಹುಡುಕುವವರು ನಿಮ್ಮ ಪೋಸ್ಟ್ ಮಾಡಿದ ಕೆಲಸಗಳಿಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿದಾಗ ಅರ್ಜಿಗಳು ಇಲ್ಲಿ ಕಾಣಿಸಿಕೊಳ್ಳುತ್ತವೆ',
+    
     // Applied Jobs
     appliedJobsTitle: 'ಅರ್ಜಿ ಸಲ್ಲಿಸಿದ ಕೆಲಸಗಳು',
     trackApplications: 'ನಿಮ್ಮ ಕೆಲಸದ ಅರ್ಜಿಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ',
@@ -889,6 +916,17 @@ const translations = {
     housekeeping: 'हाउस कीपिंग',
     constructionsiteworkers: 'निर्माण साइट मजूर',
     securityguard: 'सिक्योरिटी गार्ड',
+    
+    // Home Screen
+    availableJobs: 'उपलब्ध काम',
+    findPerfectJob: 'अपना परफेक्ट रोजाना मजूरी के काम खोजीं',
+    jobApplications: 'काम के अर्जी',
+    manageApplications: 'अपना पोस्ट कइल काम खातिर अर्जी के व्यवस्थापन करीं',
+    allJobs: 'सब काम',
+    noJobsAvailable: 'कवनो काम उपलब्ध नइखे',
+    checkBackLater: 'नया अवसर खातिर बाद में जांच करीं',
+    noApplicationsYet: 'अभी तक कवनो अर्जी नइखे',
+    applicationsWillAppear: 'जब काम खोजे वाला लोग रउआ के पोस्ट कइल काम खातिर अर्जी देई तब अर्जी इहाँ दिखाई',
     
     // Applied Jobs
     appliedJobsTitle: 'अर्जी दिहल काम',
