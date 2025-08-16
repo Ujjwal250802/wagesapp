@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { Briefcase, User, Plus, Search, FileText, Users, DollarSign, List } from 'lucide-react-native';
+import { Briefcase, User, Plus, Search, FileText, Users, DollarSign, List, History } from 'lucide-react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
@@ -102,6 +102,17 @@ export default function TabLayout() {
           }}
         />
       )}
+      {userType === 'organization' && (
+        <Tabs.Screen
+          name="payment-history"
+          options={{
+            title: 'Payment History',
+            tabBarIcon: ({ size, color }) => (
+              <History size={size} color={color} />
+            ),
+          }}
+        />
+      )}
       {userType === 'worker' && (
         <Tabs.Screen
           name="applied-jobs"
@@ -144,6 +155,14 @@ export default function TabLayout() {
       {userType === 'worker' && (
         <Tabs.Screen
           name="workers"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      )}
+      {userType === 'worker' && (
+        <Tabs.Screen
+          name="payment-history"
           options={{
             href: null, // This hides the tab
           }}

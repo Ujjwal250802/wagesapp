@@ -259,7 +259,21 @@ export default function WorkerCalendar() {
   };
 
   const handlePaymentSuccess = async (paymentData: any) => {
-    await processPayment(paymentData.paymentId, paymentData.method, paymentData.amount);
+    // Don't automatically process payment - let user confirm first
+    Alert.alert(
+      'Payment Confirmation',
+      `Payment of ₹${paymentData.amount} was successful. Do you want to record this payment?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Confirm',
+          onPress: () => processPayment(paymentData.paymentId, paymentData.method, paymentData.amount)
+        }
+      ]
+    );
   };
 
   const processPayment = async (paymentId: string, method: string, amount: number) => {
@@ -324,7 +338,7 @@ export default function WorkerCalendar() {
 
       Alert.alert(
         'Payment Successful!', 
-        `₹${amount.toLocaleString()} has been paid to ${workerData?.applicantName || workerData?.name}`,
+        `₹${amount.toLocaleString()} has been recorded as paid to ${workerData?.applicantName || workerData?.name}. The worker will be notified.`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error) {

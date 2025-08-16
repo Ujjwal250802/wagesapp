@@ -160,6 +160,17 @@ const translations = {
     pending: 'Pending',
     accepted: 'Accepted',
     rejected: 'Rejected',
+    
+    // Payment History
+    paymentHistory: 'Payment History',
+    totalPaid: 'Total Paid',
+    acrossPayments: 'Across',
+    toWorkers: 'to workers',
+    noPaymentsMade: 'No payments made yet',
+    paymentHistoryWillAppear: 'Payment history will appear here when you pay workers',
+    paidTo: 'Paid to',
+    via: 'Via',
+    dailyRate: 'Daily Rate',
   },
   hi: {
     // App Name
@@ -311,6 +322,17 @@ const translations = {
     pending: 'लंबित',
     accepted: 'स्वीकृत',
     rejected: 'अस्वीकृत',
+    
+    // Payment History
+    paymentHistory: 'भुगतान इतिहास',
+    totalPaid: 'कुल भुगतान',
+    acrossPayments: 'में',
+    toWorkers: 'मजदूरों को',
+    noPaymentsMade: 'अभी तक कोई भुगतान नहीं किया गया',
+    paymentHistoryWillAppear: 'जब आप मजदूरों को भुगतान करेंगे तो भुगतान इतिहास यहां दिखाई देगा',
+    paidTo: 'को भुगतान',
+    via: 'के माध्यम से',
+    dailyRate: 'दैनिक दर',
   },
   mr: {
     // App Name
@@ -462,6 +484,17 @@ const translations = {
     pending: 'प्रलंबित',
     accepted: 'स्वीकृत',
     rejected: 'नाकारले',
+    
+    // Payment History
+    paymentHistory: 'पेमेंट इतिहास',
+    totalPaid: 'एकूण पेमेंट',
+    acrossPayments: 'मध्ये',
+    toWorkers: 'कामगारांना',
+    noPaymentsMade: 'अद्याप कोणते पेमेंट केले नाही',
+    paymentHistoryWillAppear: 'जेव्हा तुम्ही कामगारांना पेमेंट कराल तेव्हा पेमेंट इतिहास येथे दिसेल',
+    paidTo: 'ला पेमेंट',
+    via: 'द्वारे',
+    dailyRate: 'दैनिक दर',
   },
   pa: {
     // App Name
