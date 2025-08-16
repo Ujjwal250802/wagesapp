@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
-import { DollarSign, Calendar, Building, CircleCheck as CheckCircle, User, History } from 'lucide-react-native';
+import { DollarSign, Calendar, Building, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -15,49 +14,20 @@ export default function Payments() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalEarnings, setTotalEarnings] = useState(0);
-  const [userType, setUserType] = useState(null);
-  const [totalPaid, setTotalPaid] = useState(0);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await determineUserTypeAndFetchPayments(user);
-      }
-      setLoading(false);
-    });
-
-    return unsubscribe;
+    fetchPayments();
   }, []);
 
-  const determineUserTypeAndFetchPayments = async (user) => {
+  const fetchPayments = async () => {
     try {
-      // Check if user is a worker
-      let docRef = doc(db, 'workers', user.uid);
-      let docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        setUserType('worker');
-        await fetchWorkerPayments(user.uid);
-      } else {
-        // Check if user is an organization
-        docRef = doc(db, 'organizations', user.uid);
-        docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUserType('organization');
-          await fetchEmployerPayments(user.uid);
-        }
-      }
-    } catch (error) {
-      console.error('Error determining user type:', error);
-    }
-  };
+      const user = auth.currentUser;
+      if (!user) return;
 
-  const fetchWorkerPayments = async (workerId) => {
-    try {
       // Get payments made to this worker
       const paymentsQuery = query(
         collection(db, 'payments'),
-        where('workerId', '==', workerId)
+        where('workerId', '==', user.uid)
       );
       
       const paymentsSnapshot = await getDocs(paymentsQuery);
@@ -66,7 +36,7 @@ export default function Payments() {
         ...doc.data()
       }));
 
-      // Sort by payment date (newest first)
+      // Sort by payment date (newest first) - do this in memory to avoid index requirement
       paymentsData.sort((a, b) => {
         const dateA = a.paidAt?.toDate() || new Date(0);
         const dateB = b.paidAt?.toDate() || new Date(0);
@@ -79,42 +49,13 @@ export default function Payments() {
       const total = paymentsData.reduce((sum, payment) => sum + payment.amount, 0);
       setTotalEarnings(total);
     } catch (error) {
-      console.error('Error fetching worker payments:', error);
+      console.error('Error fetching payments:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchEmployerPayments = async (employerId) => {
-    try {
-      // Get payments made by this employer
-      const paymentsQuery = query(
-        collection(db, 'payments'),
-        where('employerId', '==', employerId)
-      );
-      
-      const paymentsSnapshot = await getDocs(paymentsQuery);
-      const paymentsData = paymentsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      // Sort by payment date (newest first)
-      paymentsData.sort((a, b) => {
-        const dateA = a.paidAt?.toDate() || new Date(0);
-        const dateB = b.paidAt?.toDate() || new Date(0);
-        return dateB - dateA;
-      });
-
-      setPayments(paymentsData);
-      
-      // Calculate total paid
-      const total = paymentsData.reduce((sum, payment) => sum + payment.amount, 0);
-      setTotalPaid(total);
-    } catch (error) {
-      console.error('Error fetching employer payments:', error);
-    }
-  };
-
-  const renderWorkerPaymentCard = ({ item }) => (
+  const renderPaymentCard = ({ item }) => (
     <View style={[styles.paymentCard, { backgroundColor: colors.surface }]}>
       <View style={styles.paymentHeader}>
         <View style={styles.paymentIcon}>
@@ -144,7 +85,7 @@ export default function Payments() {
           <View style={styles.detailRow}>
             <DollarSign size={16} color="#6B7280" />
             <Text style={[styles.detailText, { color: colors.text }]}>
-              Payment Method: {item.paymentMethod === 'razorpay' ? 'Razorpay' : 'PhonePe'}
+              Payment Method: {item.paymentMethod === 'razorpay' ? 'Razorpay' : item.paymentMethod}
             </Text>
           </View>
         )}
@@ -152,53 +93,6 @@ export default function Payments() {
       
       <View style={styles.paymentFooter}>
         <Text style={[styles.workDays, { color: colors.textSecondary }]}>{t('workDays')}: {item.workDays || 0}</Text>
-        <Text style={[styles.paymentId, { color: colors.textSecondary }]}>ID: {item.razorpayPaymentId || item.paymentId || 'N/A'}</Text>
-      </View>
-    </View>
-  );
-
-  const renderEmployerPaymentCard = ({ item }) => (
-    <View style={[styles.paymentCard, { backgroundColor: colors.surface }]}>
-      <View style={styles.paymentHeader}>
-        <View style={[styles.paymentIcon, { backgroundColor: '#FEE2E2' }]}>
-          <DollarSign size={24} color="#DC2626" />
-        </View>
-        <View style={styles.paymentInfo}>
-          <Text style={[styles.amount, { color: colors.text }]}>₹{item.amount.toLocaleString()}</Text>
-          <Text style={[styles.jobTitle, { color: colors.textSecondary }]}>Paid to {item.workerName}</Text>
-        </View>
-        <View style={styles.statusIcon}>
-          <CheckCircle size={20} color="#16A34A" />
-        </View>
-      </View>
-      
-      <View style={styles.paymentDetails}>
-        <View style={styles.detailRow}>
-          <User size={16} color="#6B7280" />
-          <Text style={[styles.detailText, { color: colors.text }]}>{item.workerName}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Building size={16} color="#6B7280" />
-          <Text style={[styles.detailText, { color: colors.text }]}>{item.jobTitle}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Calendar size={16} color="#6B7280" />
-          <Text style={[styles.detailText, { color: colors.text }]}>
-            {item.workPeriod} • Paid on {item.paidAt ? new Date(item.paidAt.toDate()).toLocaleDateString() : 'N/A'}
-          </Text>
-        </View>
-        {item.paymentMethod && (
-          <View style={styles.detailRow}>
-            <DollarSign size={16} color="#6B7280" />
-            <Text style={[styles.detailText, { color: colors.text }]}>
-              via {item.paymentMethod === 'razorpay' ? 'Razorpay' : 'PhonePe'}
-            </Text>
-          </View>
-        )}
-      </View>
-      
-      <View style={styles.paymentFooter}>
-        <Text style={[styles.workDays, { color: colors.textSecondary }]}>Work Days: {item.workDays || 0}</Text>
         <Text style={[styles.paymentId, { color: colors.textSecondary }]}>ID: {item.razorpayPaymentId || item.paymentId || 'N/A'}</Text>
       </View>
     </View>
@@ -217,12 +111,8 @@ export default function Payments() {
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerContent}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {userType === 'worker' ? t('myPayments') : 'Payment History'}
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-              {userType === 'worker' ? t('trackEarnings') : 'Track payments made to workers'}
-            </Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('myPayments')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('trackEarnings')}</Text>
           </View>
           <View style={styles.headerControls}>
             <LanguageSelector />
@@ -233,35 +123,27 @@ export default function Payments() {
 
       <View style={[styles.earningsCard, { backgroundColor: colors.surface }]}>
         <View style={styles.earningsHeader}>
-          <DollarSign size={32} color={userType === 'worker' ? '#16A34A' : '#DC2626'} />
+          <DollarSign size={32} color="#16A34A" />
           <View style={styles.earningsInfo}>
-            <Text style={[styles.earningsLabel, { color: colors.textSecondary }]}>
-              {userType === 'worker' ? t('totalEarnings') : 'Total Paid Out'}
-            </Text>
-            <Text style={[styles.earningsAmount, { color: colors.text }]}>
-              ₹{(userType === 'worker' ? totalEarnings : totalPaid).toLocaleString()}
-            </Text>
+            <Text style={[styles.earningsLabel, { color: colors.textSecondary }]}>{t('totalEarnings')}</Text>
+            <Text style={[styles.earningsAmount, { color: colors.text }]}>₹{totalEarnings.toLocaleString()}</Text>
           </View>
         </View>
         <Text style={[styles.earningsSubtext, { color: colors.textSecondary }]}>
-          {userType === 'worker' ? t('fromPayments') : 'From'} {payments.length} {payments.length === 1 ? t('payment') : t('payments')}
+          {t('fromPayments')} {payments.length} {payments.length === 1 ? t('payment') : t('payments')}
         </Text>
       </View>
 
       {payments.length === 0 ? (
         <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-          <History size={48} color="#D1D5DB" />
-          <Text style={[styles.emptyText, { color: colors.text }]}>
-            {userType === 'worker' ? t('noPaymentsYet') : 'No payments made yet'}
-          </Text>
-          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-            {userType === 'worker' ? t('paymentHistoryAppear') : 'Payment history will appear here when you pay workers'}
-          </Text>
+          <DollarSign size={48} color="#D1D5DB" />
+          <Text style={[styles.emptyText, { color: colors.text }]}>{t('noPaymentsYet')}</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('paymentHistoryAppear')}</Text>
         </View>
       ) : (
         <FlatList
           data={payments}
-          renderItem={userType === 'worker' ? renderWorkerPaymentCard : renderEmployerPaymentCard}
+          renderItem={renderPaymentCard}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.paymentsList}
           showsVerticalScrollIndicator={false}
