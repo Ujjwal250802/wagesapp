@@ -4,6 +4,7 @@ import { CreditCard, Smartphone, X, DollarSign } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { paymentService, PaymentRequest } from '../services/PaymentService';
+import { phonePeService } from '../services/PhonePeService';
 
 interface PaymentModalProps {
   visible: boolean;
@@ -80,7 +81,6 @@ export default function PaymentModal({
           status: 'success'
         });
         onClose();
-        Alert.alert('Payment Successful', `₹${paymentAmount} paid successfully via Razorpay`);
       } else {
         Alert.alert('Payment Failed', result.error || 'Unknown error');
       }
@@ -92,77 +92,29 @@ export default function PaymentModal({
 
   const handlePhonePePayment = async (paymentAmount: number) => {
     try {
-      const paymentRequest: PaymentRequest = {
+      const phonePeRequest = {
+        merchantTransactionId: `TXN_${Date.now()}`,
+        merchantUserId: `USER_${Date.now()}`,
         amount: paymentAmount,
-        currency: 'INR',
-        orderId: `order_${Date.now()}`,
-        description: `Payment for ${workerName}`,
-        customerInfo: {
-          name: 'Employer',
-          email: 'employer@example.com',
-          phone: '9999999999'
-        }
+        mobileNumber: '9999999999',
+        callbackUrl: `${window.location.origin}/payment-callback`,
+        redirectUrl: `${window.location.origin}/payment-success`,
       };
 
-      // For PhonePe, we'll create a UPI payment URL
-      const upiUrl = `upi://pay?pa=merchant@paytm&pn=ROZGAR&am=${paymentAmount}&cu=INR&tn=Payment for ${workerName}`;
+      const result = await phonePeService.initiatePayment(phonePeRequest);
       
-      Alert.alert(
-        'PhonePe Payment',
-        'You will be redirected to PhonePe for payment. Please complete the payment and return to the app.',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => {
-              // Payment cancelled
-            }
-          },
-          {
-            text: 'Open PhonePe',
-            onPress: async () => {
-              try {
-                // Try to open PhonePe app or UPI
-                const { WebBrowser } = await import('expo-web-browser');
-                await WebBrowser.openBrowserAsync(upiUrl);
-                
-                // Simulate payment success after user returns
-                setTimeout(() => {
-                  Alert.alert(
-                    'Payment Status',
-                    'Did you complete the payment successfully?',
-                    [
-                      {
-                        text: 'No, Failed',
-                        style: 'cancel',
-                        onPress: () => {
-                          Alert.alert('Payment Failed', 'Payment was not completed');
-                        }
-                      },
-                      {
-                        text: 'Yes, Paid',
-                        onPress: () => {
-                          onPaymentSuccess({
-                            paymentId: `phonepe_${Date.now()}`,
-                            transactionId: `TXN_${Date.now()}`,
-                            method: 'phonepe',
-                            amount: paymentAmount,
-                            status: 'success'
-                          });
-                          onClose();
-                          Alert.alert('Payment Successful', `₹${paymentAmount} paid successfully via PhonePe`);
-                        }
-                      }
-                    ]
-                  );
-                }, 3000);
-              } catch (error) {
-                Alert.alert('Error', 'Failed to open PhonePe');
-              }
-            }
-          }
-        ]
-      );
+      if (result.success) {
+        onPaymentSuccess({
+          paymentId: result.data?.transactionId || `phonepe_${Date.now()}`,
+          transactionId: result.data?.merchantTransactionId,
+          method: 'phonepe',
+          amount: paymentAmount,
+          status: 'success'
+        });
+        onClose();
+      } else {
+        Alert.alert('Payment Failed', result.message || 'Unknown error');
+      }
     } catch (error) {
       console.error('PhonePe error:', error);
       Alert.alert('Payment Error', 'Failed to initialize PhonePe');
@@ -264,12 +216,6 @@ export default function PaymentModal({
                 </View>
               </TouchableOpacity>
             </View>
-
-            <View style={[styles.paymentNote, { backgroundColor: colors.background }]}>
-              <Text style={[styles.noteText, { color: colors.textSecondary }]}>
-                💡 You will be redirected to the selected payment gateway to complete the transaction securely.
-              </Text>
-            </View>
           </View>
 
           <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
@@ -294,7 +240,7 @@ export default function PaymentModal({
               disabled={!selectedMethod || processing}
             >
               <Text style={styles.payButtonText}>
-                {processing ? 'Opening...' : `Pay ₹${customAmount}`}
+                {processing ? 'Processing...' : `Pay ₹${customAmount}`}
               </Text>
             </TouchableOpacity>
           </View>
@@ -365,7 +311,6 @@ const styles = StyleSheet.create({
   },
   paymentMethods: {
     gap: 12,
-    marginBottom: 16,
   },
   methodsTitle: {
     fontSize: 16,
@@ -389,15 +334,6 @@ const styles = StyleSheet.create({
   },
   methodDescription: {
     fontSize: 12,
-  },
-  paymentNote: {
-    padding: 12,
-    borderRadius: 8,
-  },
-  noteText: {
-    fontSize: 12,
-    lineHeight: 16,
-    textAlign: 'center',
   },
   modalFooter: {
     flexDirection: 'row',
