@@ -60,11 +60,11 @@ export default function PaymentModal({
       const paymentRequest: PaymentRequest = {
         amount: paymentAmount,
         currency: 'INR',
-        orderId: `order_${Date.now()}`,
+        orderId: `ORDER_${Date.now()}`,
         description: `Payment for ${workerName}`,
         customerInfo: {
-          name: 'Employer',
-          email: 'employer@example.com',
+          name: workerName,
+          email: 'worker@rozgar.com',
           phone: '9999999999'
         }
       };
@@ -72,6 +72,7 @@ export default function PaymentModal({
       const result = await paymentService.processRazorpayPayment(paymentRequest);
       
       if (result.success) {
+        console.log('Razorpay payment successful:', result);
         onPaymentSuccess({
           paymentId: result.paymentId,
           orderId: result.orderId,
@@ -82,7 +83,10 @@ export default function PaymentModal({
         });
         onClose();
       } else {
-        Alert.alert('Payment Failed', result.error || 'Unknown error');
+        console.log('Razorpay payment failed:', result.error);
+        if (result.error !== 'Payment cancelled by user') {
+          Alert.alert('Payment Failed', result.error || 'Unknown error');
+        }
       }
     } catch (error) {
       console.error('Razorpay payment error:', error);
@@ -92,28 +96,33 @@ export default function PaymentModal({
 
   const handlePhonePePayment = async (paymentAmount: number) => {
     try {
-      const phonePeRequest = {
-        merchantTransactionId: `TXN_${Date.now()}`,
-        merchantUserId: `USER_${Date.now()}`,
+      const paymentRequest: PaymentRequest = {
         amount: paymentAmount,
-        mobileNumber: '9999999999',
-        callbackUrl: `${window.location.origin}/payment-callback`,
-        redirectUrl: `${window.location.origin}/payment-success`,
+        currency: 'INR',
+        orderId: `ORDER_${Date.now()}`,
+        description: `Payment for ${workerName}`,
+        customerInfo: {
+          name: workerName,
+          email: 'worker@rozgar.com',
+          phone: '9999999999'
+        }
       };
 
-      const result = await phonePeService.initiatePayment(phonePeRequest);
+      const result = await paymentService.processPhonePePayment(paymentRequest);
       
       if (result.success) {
+        console.log('PhonePe payment successful:', result);
         onPaymentSuccess({
-          paymentId: result.data?.transactionId || `phonepe_${Date.now()}`,
-          transactionId: result.data?.merchantTransactionId,
+          paymentId: result.paymentId,
+          orderId: result.orderId,
           method: 'phonepe',
           amount: paymentAmount,
           status: 'success'
         });
         onClose();
       } else {
-        Alert.alert('Payment Failed', result.message || 'Unknown error');
+        console.log('PhonePe payment failed:', result.error);
+        Alert.alert('Payment Failed', result.error || 'Unknown error');
       }
     } catch (error) {
       console.error('PhonePe error:', error);

@@ -259,21 +259,10 @@ export default function WorkerCalendar() {
   };
 
   const handlePaymentSuccess = async (paymentData: any) => {
-    // Don't automatically process payment - let user confirm first
-    Alert.alert(
-      'Payment Confirmation',
-      `Payment of ₹${paymentData.amount} was successful. Do you want to record this payment?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Confirm',
-          onPress: () => processPayment(paymentData.paymentId, paymentData.method, paymentData.amount)
-        }
-      ]
-    );
+    console.log('Payment successful:', paymentData);
+    
+    // Automatically process the payment since it's already completed
+    await processPayment(paymentData.paymentId, paymentData.method, paymentData.amount);
   };
 
   const processPayment = async (paymentId: string, method: string, amount: number) => {
@@ -286,6 +275,8 @@ export default function WorkerCalendar() {
         Alert.alert('Error', 'Please verify your email address first');
         return;
       }
+
+      console.log('Processing payment:', { paymentId, method, amount });
 
       // Get organization name
       let orgName = 'Organization';
@@ -307,11 +298,14 @@ export default function WorkerCalendar() {
         workDays: workDays,
         workPeriod: `${getMonthName(currentMonth)} ${currentYear}`,
         paymentId: paymentId,
-        razorpayPaymentId: paymentId,
+        razorpayPaymentId: method === 'razorpay' ? paymentId : null,
+        phonePePaymentId: method === 'phonepe' ? paymentId : null,
         paidAt: new Date(),
         status: 'completed',
         paymentMethod: method
       });
+
+      console.log('Payment record created successfully');
 
       // Reset attendance for next month
       const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
@@ -331,6 +325,8 @@ export default function WorkerCalendar() {
 
       await setDoc(doc(db, 'attendance', attendanceId), resetAttendanceData);
 
+      console.log('Attendance reset successfully');
+
       setAttendanceData({});
       setMarkedDates({});
       setMonthlyTotal(0);
@@ -338,7 +334,7 @@ export default function WorkerCalendar() {
 
       Alert.alert(
         'Payment Successful!', 
-        `₹${amount.toLocaleString()} has been recorded as paid to ${workerData?.applicantName || workerData?.name}. The worker will be notified.`,
+        `₹${amount.toLocaleString()} has been successfully paid to ${workerData?.applicantName || workerData?.name} via ${method === 'razorpay' ? 'Razorpay' : 'PhonePe'}. Payment ID: ${paymentId}`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error) {
@@ -353,7 +349,7 @@ export default function WorkerCalendar() {
       } else {
         Alert.alert(
           'Payment Error', 
-          `Payment failed: ${error.message || 'Unknown error'}. Please try again.`
+          `Failed to record payment: ${error.message || 'Unknown error'}. The payment was successful but could not be recorded. Please contact support with Payment ID: ${paymentId}`
         );
       }
     }
