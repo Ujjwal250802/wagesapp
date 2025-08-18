@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
-import { CheckCircle, XCircle, Clock, X } from 'lucide-react-native';
+import { CircleCheck as CheckCircle, Circle as XCircle, Clock, X } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface PaymentStatusModalProps {
