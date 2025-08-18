@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Mic, MicOff, Volume2, Wand2 } from 'lucide-react-native';
+import { Mic, MicOff, Volume2, Wand as Wand2 } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { voiceService } from '../services/VoiceService';
