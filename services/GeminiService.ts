@@ -8,7 +8,7 @@ class GeminiService {
   private model: any;
 
   constructor() {
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'AIzaSyDc_9EjeOOoXpnaZn8lvIde_mTA4Nazkqg') {
       console.warn('Gemini API key not configured. AI features will be disabled.');
       return;
     }
