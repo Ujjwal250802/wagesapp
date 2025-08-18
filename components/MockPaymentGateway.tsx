@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Image } from 'react-native';
-import { CreditCard, Smartphone, X, QrCode, CheckCircle, XCircle, Clock } from 'lucide-react-native';
+import { CreditCard, Smartphone, X, QrCode, CircleCheck as CheckCircle, Circle as XCircle, Clock } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
