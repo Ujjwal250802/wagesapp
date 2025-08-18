@@ -72,7 +72,6 @@ export default function PaymentModal({
       const result = await paymentService.processRazorpayPayment(paymentRequest);
       
       if (result.success) {
-        console.log('Razorpay payment successful:', result);
         onPaymentSuccess({
           paymentId: result.paymentId,
           orderId: result.orderId,
@@ -83,13 +82,11 @@ export default function PaymentModal({
         });
         onClose();
       } else {
-        console.log('Razorpay payment failed:', result.error);
         if (result.error !== 'Payment cancelled by user') {
           Alert.alert('Payment Failed', result.error || 'Unknown error');
         }
       }
     } catch (error) {
-      console.error('Razorpay payment error:', error);
       Alert.alert('Payment Error', 'Failed to process Razorpay payment');
     }
   };
@@ -111,7 +108,6 @@ export default function PaymentModal({
       const result = await paymentService.processPhonePePayment(paymentRequest);
       
       if (result.success) {
-        console.log('PhonePe payment successful:', result);
         onPaymentSuccess({
           paymentId: result.paymentId,
           orderId: result.orderId,
@@ -121,11 +117,9 @@ export default function PaymentModal({
         });
         onClose();
       } else {
-        console.log('PhonePe payment failed:', result.error);
         Alert.alert('Payment Failed', result.error || 'Unknown error');
       }
     } catch (error) {
-      console.error('PhonePe error:', error);
       Alert.alert('Payment Error', 'Failed to initialize PhonePe');
     }
   };

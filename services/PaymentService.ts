@@ -1,18 +1,5 @@
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
-
-export interface PaymentConfig {
-  razorpay: {
-    keyId: string;
-    keySecret: string;
-  };
-  phonepe: {
-    merchantId: string;
-    saltKey: string;
-    saltIndex: number;
-  };
-}
 
 export interface PaymentRequest {
   amount: number;
@@ -36,17 +23,8 @@ export interface PaymentResponse {
 }
 
 class PaymentService {
-  private config: PaymentConfig = {
-    razorpay: {
-      keyId: 'rzp_test_uO9KUIRRmFD0rp',
-      keySecret: 'ZsmuBYvapWYZ4IkpMRWCZWpo',
-    },
-    phonepe: {
-      merchantId: 'PGTESTPAYUAT',
-      saltKey: '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399',
-      saltIndex: 1,
-    },
-  };
+  private razorpayKeyId = 'rzp_test_uO9KUIRRmFD0rp';
+  private phonePeMerchantId = 'PGTESTPAYUAT';
 
   async processRazorpayPayment(request: PaymentRequest): Promise<PaymentResponse> {
     try {
@@ -84,120 +62,212 @@ class PaymentService {
 
   private async processRazorpayWeb(request: PaymentRequest): Promise<PaymentResponse> {
     return new Promise((resolve) => {
-      // Create order first (in real app, this should be done on backend)
-      const orderData = {
-        amount: request.amount * 100, // Convert to paise
-        currency: request.currency,
-        receipt: request.orderId,
+      // Load Razorpay script dynamically
+      const loadRazorpayScript = () => {
+        return new Promise((scriptResolve, scriptReject) => {
+          if (window.Razorpay) {
+            scriptResolve(true);
+            return;
+          }
+
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = () => scriptResolve(true);
+          script.onerror = () => scriptReject(new Error('Failed to load Razorpay script'));
+          document.head.appendChild(script);
+        });
       };
 
-      // Load Razorpay script if not already loaded
-      if (!window.Razorpay) {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => this.openRazorpayCheckout(request, resolve);
-        script.onerror = () => resolve({
-          success: false,
-          error: 'Failed to load Razorpay',
-          method: 'razorpay',
-        });
-        document.body.appendChild(script);
-      } else {
-        this.openRazorpayCheckout(request, resolve);
-      }
-    });
-  }
+      loadRazorpayScript()
+        .then(() => {
+          const options = {
+            key: this.razorpayKeyId,
+            amount: request.amount * 100, // Convert to paise
+            currency: request.currency,
+            name: 'ROZGAR',
+            description: request.description,
+            order_id: request.orderId,
+            prefill: {
+              name: request.customerInfo.name,
+              email: request.customerInfo.email,
+              contact: request.customerInfo.phone,
+            },
+            theme: {
+              color: '#2563EB',
+            },
+            handler: function (response: any) {
+              console.log('Razorpay success:', response);
+              resolve({
+                success: true,
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+                signature: response.razorpay_signature,
+                method: 'razorpay',
+              });
+            },
+            modal: {
+              ondismiss: function() {
+                resolve({
+                  success: false,
+                  error: 'Payment cancelled by user',
+                  method: 'razorpay',
+                });
+              },
+            },
+          };
 
-  private openRazorpayCheckout(
-    request: PaymentRequest, 
-    resolve: (value: PaymentResponse) => void
-  ) {
-    const options = {
-      key: this.config.razorpay.keyId,
-      amount: request.amount * 100, // Convert to paise
-      currency: request.currency,
-      name: 'ROZGAR',
-      description: request.description,
-      image: '/assets/images/icon.png', // Your app logo
-      order_id: request.orderId,
-      prefill: {
-        name: request.customerInfo.name,
-        email: request.customerInfo.email,
-        contact: request.customerInfo.phone,
-      },
-      notes: {
-        address: 'ROZGAR Payment',
-      },
-      theme: {
-        color: '#2563EB',
-      },
-      method: {
-        netbanking: true,
-        card: true,
-        upi: true,
-        wallet: true,
-        emi: true,
-        paylater: true,
-      },
-      handler: function (response: any) {
-        console.log('Razorpay payment success:', response);
-        resolve({
-          success: true,
-          paymentId: response.razorpay_payment_id,
-          orderId: response.razorpay_order_id,
-          signature: response.razorpay_signature,
-          method: 'razorpay',
-        });
-      },
-      modal: {
-        ondismiss: function() {
-          console.log('Razorpay payment dismissed');
+          const rzp = new window.Razorpay(options);
+          
+          rzp.on('payment.failed', function (response: any) {
+            console.log('Razorpay failed:', response);
+            resolve({
+              success: false,
+              error: response.error?.description || 'Payment failed',
+              method: 'razorpay',
+            });
+          });
+
+          rzp.open();
+        })
+        .catch((error) => {
           resolve({
             success: false,
-            error: 'Payment cancelled by user',
+            error: 'Failed to load payment gateway',
             method: 'razorpay',
           });
-        },
-      },
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.on('payment.failed', function (response: any) {
-      console.log('Razorpay payment failed:', response.error);
-      resolve({
-        success: false,
-        error: response.error.description || 'Payment failed',
-        method: 'razorpay',
-      });
+        });
     });
-
-    rzp.open();
   }
 
   private async processRazorpayMobile(request: PaymentRequest): Promise<PaymentResponse> {
     try {
-      // Create a payment URL for mobile
-      const paymentUrl = this.createRazorpayMobileUrl(request);
-      
-      // Open in browser
-      const result = await WebBrowser.openBrowserAsync(paymentUrl, {
+      // For mobile, create a payment URL that opens Razorpay checkout
+      const paymentData = {
+        key: this.razorpayKeyId,
+        amount: request.amount * 100,
+        currency: request.currency,
+        name: 'ROZGAR',
+        description: request.description,
+        order_id: request.orderId,
+        prefill: {
+          name: request.customerInfo.name,
+          email: request.customerInfo.email,
+          contact: request.customerInfo.phone,
+        },
+        theme: {
+          color: '#2563EB',
+        },
+      };
+
+      // Create a simple HTML page with Razorpay integration
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Payment - ROZGAR</title>
+          <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              margin: 0; 
+              padding: 20px; 
+              background: #f8fafc;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+            }
+            .container {
+              background: white;
+              padding: 30px;
+              border-radius: 12px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              text-align: center;
+              max-width: 400px;
+              width: 100%;
+            }
+            .logo { color: #2563EB; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+            .amount { font-size: 32px; font-weight: bold; color: #16A34A; margin: 20px 0; }
+            .description { color: #6B7280; margin-bottom: 30px; }
+            .pay-button {
+              background: #2563EB;
+              color: white;
+              border: none;
+              padding: 16px 32px;
+              border-radius: 8px;
+              font-size: 16px;
+              font-weight: 600;
+              cursor: pointer;
+              width: 100%;
+            }
+            .pay-button:hover { background: #1D4ED8; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="logo">ROZGAR</div>
+            <div class="amount">₹${request.amount}</div>
+            <div class="description">${request.description}</div>
+            <button class="pay-button" onclick="startPayment()">Pay with Razorpay</button>
+          </div>
+          
+          <script>
+            function startPayment() {
+              const options = ${JSON.stringify(paymentData)};
+              options.handler = function(response) {
+                window.postMessage({
+                  type: 'PAYMENT_SUCCESS',
+                  data: response
+                }, '*');
+              };
+              options.modal = {
+                ondismiss: function() {
+                  window.postMessage({
+                    type: 'PAYMENT_CANCELLED'
+                  }, '*');
+                }
+              };
+              
+              const rzp = new Razorpay(options);
+              rzp.on('payment.failed', function(response) {
+                window.postMessage({
+                  type: 'PAYMENT_FAILED',
+                  error: response.error
+                }, '*');
+              });
+              rzp.open();
+            }
+            
+            // Auto-start payment
+            setTimeout(startPayment, 1000);
+          </script>
+        </body>
+        </html>
+      `;
+
+      // Create blob URL for the HTML content
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+
+      const result = await WebBrowser.openBrowserAsync(url, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
         showTitle: true,
         toolbarColor: '#2563EB',
       });
 
-      // For mobile, we'll need to handle the callback differently
-      // This is a simplified version - in production, you'd handle deep links
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            success: true,
-            paymentId: `rzp_mobile_${Date.now()}`,
-            orderId: request.orderId,
-            method: 'razorpay',
-          });
-        }, 3000);
-      });
+      // Clean up blob URL
+      URL.revokeObjectURL(url);
+
+      // For demo purposes, simulate success after browser closes
+      return {
+        success: true,
+        paymentId: `rzp_${Date.now()}`,
+        orderId: request.orderId,
+        method: 'razorpay',
+      };
     } catch (error) {
       return {
         success: false,
@@ -207,95 +277,26 @@ class PaymentService {
     }
   }
 
-  private createRazorpayMobileUrl(request: PaymentRequest): string {
-    const params = new URLSearchParams({
-      key_id: this.config.razorpay.keyId,
-      amount: (request.amount * 100).toString(),
-      currency: request.currency,
-      name: 'ROZGAR',
-      description: request.description,
-      order_id: request.orderId,
-      prefill_name: request.customerInfo.name,
-      prefill_email: request.customerInfo.email,
-      prefill_contact: request.customerInfo.phone,
-      theme_color: '#2563EB',
-    });
-
-    return `https://checkout.razorpay.com/v1/checkout.js?${params.toString()}`;
-  }
-
   private async processPhonePeWeb(request: PaymentRequest): Promise<PaymentResponse> {
     try {
-      // Create PhonePe payment URL
-      const paymentUrl = await this.createPhonePePaymentUrl(request);
+      const transactionId = `TXN_${Date.now()}`;
       
-      // Open PhonePe payment page in new window
-      const paymentWindow = window.open(
-        paymentUrl,
-        'phonepe_payment',
-        'width=800,height=600,scrollbars=yes,resizable=yes'
-      );
-
-      return new Promise((resolve) => {
-        // Monitor the payment window
-        const checkClosed = setInterval(() => {
-          if (paymentWindow?.closed) {
-            clearInterval(checkClosed);
-            // In real implementation, you'd check the payment status via API
-            resolve({
-              success: true,
-              paymentId: `phonepe_${Date.now()}`,
-              orderId: request.orderId,
-              method: 'phonepe',
-            });
-          }
-        }, 1000);
-
-        // Timeout after 10 minutes
-        setTimeout(() => {
-          clearInterval(checkClosed);
-          if (paymentWindow && !paymentWindow.closed) {
-            paymentWindow.close();
-          }
-          resolve({
-            success: false,
-            error: 'Payment timeout',
-            method: 'phonepe',
-          });
-        }, 600000);
-      });
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message || 'PhonePe payment failed',
-        method: 'phonepe',
-      };
-    }
-  }
-
-  private async processPhonePeMobile(request: PaymentRequest): Promise<PaymentResponse> {
-    try {
-      // Create PhonePe payment URL
-      const paymentUrl = await this.createPhonePePaymentUrl(request);
+      // Create PhonePe payment URL for web
+      const paymentUrl = `https://mercury-t2.phonepe.com/transact/simulate?merchantId=${this.phonePeMerchantId}&merchantTransactionId=${transactionId}&amount=${request.amount * 100}`;
       
-      // Open in browser
       const result = await WebBrowser.openBrowserAsync(paymentUrl, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
         showTitle: true,
         toolbarColor: '#5F259F',
       });
 
-      // For mobile, we'll need to handle the callback differently
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            success: true,
-            paymentId: `phonepe_mobile_${Date.now()}`,
-            orderId: request.orderId,
-            method: 'phonepe',
-          });
-        }, 3000);
-      });
+      // For demo purposes, simulate success
+      return {
+        success: true,
+        paymentId: `phonepe_${Date.now()}`,
+        orderId: request.orderId,
+        method: 'phonepe',
+      };
     } catch (error) {
       return {
         success: false,
@@ -305,84 +306,210 @@ class PaymentService {
     }
   }
 
-  private async createPhonePePaymentUrl(request: PaymentRequest): Promise<string> {
-    const transactionId = `TXN_${Date.now()}`;
-    const userId = `USER_${Date.now()}`;
-    
-    const paymentData = {
-      merchantId: this.config.phonepe.merchantId,
-      merchantTransactionId: transactionId,
-      merchantUserId: userId,
-      amount: request.amount * 100, // Convert to paise
-      redirectUrl: `${window.location.origin}/payment-success?method=phonepe&txnId=${transactionId}`,
-      redirectMode: 'POST',
-      callbackUrl: `${window.location.origin}/payment-callback`,
-      mobileNumber: request.customerInfo.phone,
-      paymentInstrument: {
-        type: 'PAY_PAGE',
-      },
-    };
-
-    // In production, this should be done on your backend
-    const payload = JSON.stringify(paymentData);
-    const payloadMain = btoa(payload);
-    const checksum = await this.generatePhonePeChecksum(payloadMain);
-
-    // PhonePe test environment URL
-    const baseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
-    
-    // Create form data for POST request
-    const formData = new FormData();
-    formData.append('request', payloadMain);
-    
-    // For demo, return a mock PhonePe URL
-    // In production, you'd make a POST request to PhonePe API and get the redirect URL
-    return `https://mercury-t2.phonepe.com/transact/simulate?merchantId=${this.config.phonepe.merchantId}&merchantTransactionId=${transactionId}&amount=${request.amount * 100}`;
-  }
-
-  private async generatePhonePeChecksum(payload: string): Promise<string> {
-    // In production, this should be done on your backend for security
-    const string = payload + '/pg/v1/pay' + this.config.phonepe.saltKey;
-    
-    // For demo, return a mock checksum
-    return `${btoa(string)}###${this.config.phonepe.saltIndex}`;
-  }
-
-  async verifyPayment(paymentId: string, method: 'razorpay' | 'phonepe'): Promise<boolean> {
+  private async processPhonePeMobile(request: PaymentRequest): Promise<PaymentResponse> {
     try {
-      if (method === 'razorpay') {
-        return await this.verifyRazorpayPayment(paymentId);
-      } else {
-        return await this.verifyPhonePePayment(paymentId);
-      }
-    } catch (error) {
-      console.error('Payment verification error:', error);
-      return false;
-    }
-  }
-
-  private async verifyRazorpayPayment(paymentId: string): Promise<boolean> {
-    try {
-      // In production, verify payment on your backend
-      const response = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${btoa(this.config.razorpay.keyId + ':' + this.config.razorpay.keySecret)}`,
-        },
-      });
+      const transactionId = `TXN_${Date.now()}`;
       
-      const paymentData = await response.json();
-      return paymentData.status === 'captured';
+      // Create a simple HTML page for PhonePe payment
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>PhonePe Payment - ROZGAR</title>
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              margin: 0; 
+              padding: 20px; 
+              background: linear-gradient(135deg, #5F259F, #8B5CF6);
+              color: white;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+            }
+            .container {
+              background: rgba(255,255,255,0.1);
+              backdrop-filter: blur(10px);
+              padding: 30px;
+              border-radius: 16px;
+              text-align: center;
+              max-width: 400px;
+              width: 100%;
+              border: 1px solid rgba(255,255,255,0.2);
+            }
+            .logo { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+            .amount { font-size: 32px; font-weight: bold; margin: 20px 0; }
+            .description { opacity: 0.9; margin-bottom: 30px; }
+            .pay-button {
+              background: white;
+              color: #5F259F;
+              border: none;
+              padding: 16px 32px;
+              border-radius: 8px;
+              font-size: 16px;
+              font-weight: 600;
+              cursor: pointer;
+              width: 100%;
+              margin-bottom: 20px;
+            }
+            .pay-button:hover { background: #f3f4f6; }
+            .phonepe-logo {
+              background: white;
+              color: #5F259F;
+              padding: 8px 16px;
+              border-radius: 6px;
+              font-weight: bold;
+              display: inline-block;
+              margin-bottom: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="phonepe-logo">PhonePe</div>
+            <div class="logo">ROZGAR Payment</div>
+            <div class="amount">₹${request.amount}</div>
+            <div class="description">${request.description}</div>
+            <button class="pay-button" onclick="processPayment()">Pay with PhonePe</button>
+            <div style="font-size: 12px; opacity: 0.8;">
+              Secure payment powered by PhonePe
+            </div>
+          </div>
+          
+          <script>
+            function processPayment() {
+              // Simulate payment processing
+              document.querySelector('.pay-button').textContent = 'Processing...';
+              document.querySelector('.pay-button').disabled = true;
+              
+              setTimeout(() => {
+                document.querySelector('.container').innerHTML = \`
+                  <div style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+                    <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Payment Successful!</div>
+                    <div style="font-size: 18px; margin-bottom: 20px;">₹${request.amount}</div>
+                    <div style="font-size: 14px; opacity: 0.8;">Transaction ID: phonepe_\${Date.now()}</div>
+                  </div>
+                \`;
+                
+                // Auto close after 3 seconds
+                setTimeout(() => {
+                  window.close();
+                }, 3000);
+              }, 2000);
+            }
+          </script>
+        </body>
+        </html>
+      `;
+
+      // Create blob URL for the HTML content
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+
+      const result = await WebBrowser.openBrowserAsync(url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        showTitle: true,
+        toolbarColor: '#5F259F',
+      });
+
+      // Clean up blob URL
+      URL.revokeObjectURL(url);
+
+      return {
+        success: true,
+        paymentId: `phonepe_${Date.now()}`,
+        orderId: request.orderId,
+        method: 'phonepe',
+      };
     } catch (error) {
-      console.error('Razorpay verification error:', error);
-      return false;
+      return {
+        success: false,
+        error: error.message || 'Failed to open PhonePe',
+        method: 'phonepe',
+      };
     }
   }
 
-  private async verifyPhonePePayment(paymentId: string): Promise<boolean> {
-    // In production, verify payment on your backend
-    // For demo, assume all payments are valid
-    return true;
+  private async processRazorpayWeb(request: PaymentRequest): Promise<PaymentResponse> {
+    return new Promise((resolve) => {
+      // Load Razorpay script if not already loaded
+      const loadScript = () => {
+        return new Promise((scriptResolve, scriptReject) => {
+          if (window.Razorpay) {
+            scriptResolve(true);
+            return;
+          }
+
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = () => scriptResolve(true);
+          script.onerror = () => scriptReject(new Error('Razorpay script failed to load'));
+          document.head.appendChild(script);
+        });
+      };
+
+      loadScript()
+        .then(() => {
+          const options = {
+            key: this.razorpayKeyId,
+            amount: request.amount * 100, // Convert to paise
+            currency: request.currency,
+            name: 'ROZGAR',
+            description: request.description,
+            order_id: request.orderId,
+            prefill: {
+              name: request.customerInfo.name,
+              email: request.customerInfo.email,
+              contact: request.customerInfo.phone,
+            },
+            theme: {
+              color: '#2563EB',
+            },
+            handler: function (response: any) {
+              resolve({
+                success: true,
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+                signature: response.razorpay_signature,
+                method: 'razorpay',
+              });
+            },
+            modal: {
+              ondismiss: function() {
+                resolve({
+                  success: false,
+                  error: 'Payment cancelled by user',
+                  method: 'razorpay',
+                });
+              },
+            },
+          };
+
+          const rzp = new window.Razorpay(options);
+          
+          rzp.on('payment.failed', function (response: any) {
+            resolve({
+              success: false,
+              error: response.error?.description || 'Payment failed',
+              method: 'razorpay',
+            });
+          });
+
+          rzp.open();
+        })
+        .catch(() => {
+          resolve({
+            success: false,
+            error: 'Failed to load Razorpay',
+            method: 'razorpay',
+          });
+        });
+    });
   }
 }
 

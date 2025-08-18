@@ -26,6 +26,7 @@ export default function WorkerCalendar() {
   const [workDays, setWorkDays] = useState(0);
   const [loading, setLoading] = useState(true);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (workerId) {
@@ -36,7 +37,7 @@ export default function WorkerCalendar() {
 
   useEffect(() => {
     calculateMonthlyTotal();
-  }, [attendanceData, currentMonth, currentYear]);
+  }, [attendanceData, currentMonth, currentYear, refreshKey]);
 
   const fetchWorkerData = async () => {
     try {
@@ -222,6 +223,9 @@ export default function WorkerCalendar() {
       setAttendanceData(updatedAttendance);
       updateMarkedDates(updatedAttendance);
       
+      // Force re-render of calendar
+      setRefreshKey(prev => prev + 1);
+      
       Alert.alert(
         'Success', 
         `Marked ${workerData?.applicantName || workerData?.name || 'Worker'} as ${status} for ${new Date(selectedDate).toLocaleDateString()}`
@@ -389,11 +393,13 @@ export default function WorkerCalendar() {
       <ScrollView style={styles.content}>
         <View style={styles.calendarContainer}>
           <Calendar
+            key={refreshKey}
             current={`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`}
             onDayPress={(day) => setSelectedDate(day.dateString)}
             onMonthChange={(month) => {
               setCurrentMonth(month.month - 1);
               setCurrentYear(month.year);
+              setRefreshKey(prev => prev + 1);
             }}
             markingType={'custom'}
             markedDates={markedDates}
