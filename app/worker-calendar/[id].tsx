@@ -265,6 +265,13 @@ export default function WorkerCalendar() {
   const handlePaymentSuccess = async (paymentData: any) => {
     console.log('Payment successful:', paymentData);
     
+    // Show success message immediately
+    Alert.alert(
+      'Payment Initiated',
+      `Payment of ₹${paymentData.amount} has been initiated via ${paymentData.method === 'razorpay' ? 'Razorpay' : 'PhonePe'}`,
+      [{ text: 'OK' }]
+    );
+
     // Automatically process the payment since it's already completed
     await processPayment(paymentData.paymentId, paymentData.method, paymentData.amount);
   };

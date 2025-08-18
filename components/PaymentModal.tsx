@@ -93,32 +93,40 @@ export default function PaymentModal({
 
   const handlePhonePePayment = async (paymentAmount: number) => {
     try {
-      const paymentRequest: PaymentRequest = {
-        amount: paymentAmount,
-        currency: 'INR',
-        orderId: `ORDER_${Date.now()}`,
-        description: `Payment for ${workerName}`,
-        customerInfo: {
-          name: workerName,
-          email: 'worker@rozgar.com',
-          phone: '9999999999'
-        }
-      };
+      // Show processing state
+      Alert.alert(
+        'Processing Payment',
+        'Redirecting to PhonePe...',
+        [{ text: 'OK' }]
+      );
 
-      const result = await paymentService.processPhonePePayment(paymentRequest);
-      
-      if (result.success) {
-        onPaymentSuccess({
-          paymentId: result.paymentId,
-          orderId: result.orderId,
-          method: 'phonepe',
-          amount: paymentAmount,
-          status: 'success'
-        });
-        onClose();
-      } else {
-        Alert.alert('Payment Failed', result.error || 'Unknown error');
-      }
+      // Simulate PhonePe payment processing
+      setTimeout(async () => {
+        try {
+          const transactionId = `TXN_${Date.now()}`;
+          const result = await phonePeService.initiatePayment({
+            amount: paymentAmount,
+            merchantTransactionId: transactionId,
+            merchantUserId: `USER_${Date.now()}`,
+            mobileNumber: '9999999999'
+          });
+
+          if (result.success) {
+            onPaymentSuccess({
+              paymentId: result.transactionId,
+              orderId: `ORDER_${Date.now()}`,
+              method: 'phonepe',
+              amount: paymentAmount,
+              status: 'success'
+            });
+            onClose();
+          } else {
+            Alert.alert('Payment Failed', result.error || 'Unknown error');
+          }
+        } catch (error) {
+          Alert.alert('Payment Error', 'Failed to process PhonePe payment');
+        }
+      }, 1000);
     } catch (error) {
       Alert.alert('Payment Error', 'Failed to initialize PhonePe');
     }
@@ -192,6 +200,9 @@ export default function PaymentModal({
                     Cards, UPI, Net Banking, Wallets
                   </Text>
                 </View>
+                {selectedMethod === 'razorpay' && (
+                  <View style={[styles.selectedIndicator, { backgroundColor: colors.primary }]} />
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -217,7 +228,16 @@ export default function PaymentModal({
                     UPI, Cards, Wallets
                   </Text>
                 </View>
+                {selectedMethod === 'phonepe' && (
+                  <View style={[styles.selectedIndicator, { backgroundColor: colors.primary }]} />
+                )}
               </TouchableOpacity>
+            </View>
+
+            <View style={[styles.securityNote, { backgroundColor: colors.background }]}>
+              <Text style={[styles.securityText, { color: colors.textSecondary }]}>
+                🔒 Your payment is secured with 256-bit SSL encryption
+              </Text>
             </View>
           </View>
 
@@ -225,6 +245,7 @@ export default function PaymentModal({
             <TouchableOpacity
               style={[styles.cancelButton, { backgroundColor: colors.background, borderColor: colors.border }]}
               onPress={onClose}
+              disabled={processing}
             >
               <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
                 Cancel
@@ -265,6 +286,11 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     borderRadius: 16,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -292,6 +318,7 @@ const styles = StyleSheet.create({
   amountLabel: {
     fontSize: 14,
     marginBottom: 8,
+    fontWeight: '500',
   },
   amountInputContainer: {
     flexDirection: 'row',
@@ -326,6 +353,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     gap: 16,
+    position: 'relative',
   },
   methodInfo: {
     flex: 1,
@@ -337,6 +365,23 @@ const styles = StyleSheet.create({
   },
   methodDescription: {
     fontSize: 12,
+  },
+  selectedIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  securityNote: {
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  securityText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   modalFooter: {
     flexDirection: 'row',
