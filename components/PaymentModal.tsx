@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput } from 'react-native';
 import { CreditCard, Smartphone, X, DollarSign } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { paymentService, PaymentRequest } from '../services/PaymentService';
-import { phonePeService } from '../services/PhonePeService';
+import MockPaymentGateway from './MockPaymentGateway';
 
 interface PaymentModalProps {
   visible: boolean;
   onClose: () => void;
   amount: number;
   workerName: string;
-  onPaymentSuccess: (paymentData: any) => void;
+  onPaymentResult: (result: 'success' | 'failed' | 'pending', paymentData?: any) => void;
 }
 
 export default function PaymentModal({ 
@@ -19,209 +18,204 @@ export default function PaymentModal({
   onClose, 
   amount, 
   workerName, 
-  onPaymentSuccess 
+  onPaymentResult 
 }: PaymentModalProps) {
   const { colors } = useTheme();
   const { t } = useLanguage();
-  const [selectedMethod, setSelectedMethod] = useState<'razorpay' | 'phonepe' | null>(null);
   const [customAmount, setCustomAmount] = useState(amount.toString());
-  const [processing, setProcessing] = useState(false);
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
 
-  const handlePayment = async () => {
-    if (!selectedMethod) {
-      Alert.alert('Error', 'Please select a payment method');
-      return;
-    }
-
+  const handlePayment = () => {
     const paymentAmount = parseInt(customAmount);
     if (!paymentAmount || paymentAmount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
 
-    setProcessing(true);
-
-    try {
-      if (selectedMethod === 'razorpay') {
-        await handleRazorpayPayment(paymentAmount);
-      } else if (selectedMethod === 'phonepe') {
-        await handlePhonePePayment(paymentAmount);
-      }
-    } catch (error) {
-      console.error('Payment error:', error);
-      Alert.alert('Payment Failed', 'Please try again');
-    } finally {
-      setProcessing(false);
-    }
+    setShowPaymentGateway(true);
   };
 
-  const handleRazorpayPayment = async (paymentAmount: number) => {
-    try {
-      const paymentRequest: PaymentRequest = {
-        amount: paymentAmount,
-        currency: 'INR',
-        orderId: `ORDER_${Date.now()}`,
-        description: `Payment for ${workerName}`,
-        customerInfo: {
-          name: workerName,
-          email: 'worker@rozgar.com',
-          phone: '9999999999'
-        }
-      };
-
-      const result = await paymentService.processRazorpayPayment(paymentRequest);
-      
-      if (result.success) {
-        console.log('Razorpay payment successful:', result);
-        onPaymentSuccess({
-          paymentId: result.paymentId,
-          orderId: result.orderId,
-          signature: result.signature,
-          method: 'razorpay',
-          amount: paymentAmount,
-          status: 'success'
-        });
-        onClose();
-      } else {
-        console.log('Razorpay payment failed:', result.error);
-        if (result.error !== 'Payment cancelled by user') {
-          Alert.alert('Payment Failed', result.error || 'Unknown error');
-        }
-      }
-    } catch (error) {
-      console.error('Razorpay payment error:', error);
-      Alert.alert('Payment Error', 'Failed to process Razorpay payment');
-    }
+  const handlePaymentGatewayResult = (result: 'success' | 'failed' | 'pending') => {
+    setShowPaymentGateway(false);
+    
+    const paymentData = {
+      paymentId: `DEMO_${Date.now()}`,
+      orderId: `ORDER_${Date.now()}`,
+      method: 'demo',
+      amount: parseInt(customAmount),
+      status: result
+    };
+    
+    onPaymentResult(result, paymentData);
   };
 
-  const handlePhonePePayment = async (paymentAmount: number) => {
-    try {
-      const paymentRequest: PaymentRequest = {
-        amount: paymentAmount,
-        currency: 'INR',
-        orderId: `ORDER_${Date.now()}`,
-        description: `Payment for ${workerName}`,
-        customerInfo: {
-          name: workerName,
-          email: 'worker@rozgar.com',
-          phone: '9999999999'
-        }
-      };
-
-      const result = await paymentService.processPhonePePayment(paymentRequest);
-      
-      if (result.success) {
-        console.log('PhonePe payment successful:', result);
-        onPaymentSuccess({
-          paymentId: result.paymentId,
-          orderId: result.orderId,
-          method: 'phonepe',
-          amount: paymentAmount,
-          status: 'success'
-        });
-        onClose();
-      } else {
-        console.log('PhonePe payment failed:', result.error);
-        Alert.alert('Payment Failed', result.error || 'Unknown error');
-      }
-    } catch (error) {
-      console.error('PhonePe error:', error);
-      Alert.alert('Payment Error', 'Failed to initialize PhonePe');
-    }
+  const handleClose = () => {
+    setShowPaymentGateway(false);
+    onClose();
   };
 
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Payment for {workerName}
-            </Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={onClose}
-            >
-              <X size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.modalBody}>
-            <View style={[styles.amountSection, { backgroundColor: colors.background }]}>
-              <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>
-                Payment Amount
+    <>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={visible && !showPaymentGateway}
+        onRequestClose={handleClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Payment for {workerName}
               </Text>
-              <View style={[styles.amountInputContainer, { borderColor: colors.border }]}>
-                <DollarSign size={20} color={colors.textSecondary} />
-                <Text style={[styles.currencySymbol, { color: colors.text }]}>₹</Text>
-                <TextInput
-                  style={[styles.amountInput, { color: colors.text }]}
-                  value={customAmount}
-                  onChangeText={setCustomAmount}
-                  keyboardType="numeric"
-                  placeholder="0"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
+              <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                <X size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.paymentMethods}>
-              <Text style={[styles.methodsTitle, { color: colors.text }]}>
-                Select Payment Method
-              </Text>
-              
-              <TouchableOpacity
-                style={[
-                  styles.methodButton,
-                  { 
-                    backgroundColor: colors.background,
-                    borderColor: selectedMethod === 'razorpay' ? colors.primary : colors.border,
-                    borderWidth: selectedMethod === 'razorpay' ? 2 : 1,
-                  }
-                ]}
-                onPress={() => setSelectedMethod('razorpay')}
-              >
-                <CreditCard size={24} color={selectedMethod === 'razorpay' ? colors.primary : colors.textSecondary} />
-                <View style={styles.methodInfo}>
-                  <Text style={[
-                    styles.methodName, 
-                    { color: selectedMethod === 'razorpay' ? colors.primary : colors.text }
-                  ]}>
-                    Razorpay
-                  </Text>
-                  <Text style={[styles.methodDescription, { color: colors.textSecondary }]}>
-                    Cards, UPI, Net Banking, Wallets
-                  </Text>
+            <View style={styles.modalBody}>
+              <View style={[styles.amountSection, { backgroundColor: colors.background }]}>
+                <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>
+                  Payment Amount
+                </Text>
+                <View style={[styles.amountInputContainer, { borderColor: colors.border }]}>
+                  <DollarSign size={20} color={colors.textSecondary} />
+                  <Text style={[styles.currencySymbol, { color: colors.text }]}>₹</Text>
+                  <TextInput
+                    style={[styles.amountInput, { color: colors.text }]}
+                    value={customAmount}
+                    onChangeText={setCustomAmount}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={colors.textSecondary}
+                  />
                 </View>
-              </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.methodButton,
-                  { 
-                    backgroundColor: colors.background,
-                    borderColor: selectedMethod === 'phonepe' ? colors.primary : colors.border,
-                    borderWidth: selectedMethod === 'phonepe' ? 2 : 1,
-                  }
-                ]}
-                onPress={() => setSelectedMethod('phonepe')}
-              >
-                <Smartphone size={24} color={selectedMethod === 'phonepe' ? colors.primary : colors.textSecondary} />
-                <View style={styles.methodInfo}>
-                  <Text style={[
-                    styles.methodName, 
-                    { color: selectedMethod === 'phonepe' ? colors.primary : colors.text }
-                  ]}>
-                    PhonePe
+              <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
+                <TouchableOpacity
+                  style={[styles.cancelButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                  onPress={handleClose}
+                >
+                  <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+                    Cancel
                   </Text>
-                  <Text style={[styles.methodDescription, { color: colors.textSecondary }]}>
-                    UPI, Cards, Wallets
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.payButton, { backgroundColor: colors.primary }]}
+                  onPress={handlePayment}
+                >
+                  <Text style={styles.payButtonText}>
+                    Pay ₹{customAmount}
                   </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <MockPaymentGateway
+        visible={showPaymentGateway}
+        onClose={() => setShowPaymentGateway(false)}
+        amount={parseInt(customAmount)}
+        workerName={workerName}
+        onPaymentResult={handlePaymentGatewayResult}
+      />
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    flex: 1,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  amountSection: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  amountLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  amountInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  currencySymbol: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    borderTopWidth: 1,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  payButton: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  payButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+
                 </View>
               </TouchableOpacity>
             </View>

@@ -261,8 +261,23 @@ export default function WorkerCalendar() {
   const handlePaymentSuccess = async (paymentData: any) => {
     console.log('Payment successful:', paymentData);
     
-    // Automatically process the payment since it's already completed
-    await processPayment(paymentData.paymentId, paymentData.method, paymentData.amount);
+    if (paymentData.status === 'success') {
+      await processPayment(paymentData.paymentId, paymentData.method, paymentData.amount);
+    } else if (paymentData.status === 'failed') {
+      Alert.alert('Payment Failed', 'The payment was not successful. Please try again.');
+    } else if (paymentData.status === 'pending') {
+      Alert.alert('Payment Pending', 'Your payment is being processed. You will be notified once it is completed.');
+    }
+  };
+
+  const handlePaymentResult = (result: 'success' | 'failed' | 'pending', paymentData?: any) => {
+    if (result === 'success' && paymentData) {
+      handlePaymentSuccess(paymentData);
+    } else if (result === 'failed') {
+      Alert.alert('Payment Failed', 'The payment was not successful. Please try again.');
+    } else if (result === 'pending') {
+      Alert.alert('Payment Pending', 'Your payment is being processed. You will be notified once it is completed.');
+    }
   };
 
   const processPayment = async (paymentId: string, method: string, amount: number) => {
@@ -469,7 +484,7 @@ export default function WorkerCalendar() {
           onClose={() => setPaymentModalVisible(false)}
           amount={monthlyTotal}
           workerName={workerData?.applicantName || workerData?.name || 'Worker'}
-          onPaymentSuccess={handlePaymentSuccess}
+          onPaymentResult={handlePaymentResult}
         />
 
         <View style={styles.legend}>
