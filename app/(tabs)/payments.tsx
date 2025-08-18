@@ -7,6 +7,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
 import LanguageSelector from '../../components/LanguageSelector';
+import PerformanceAnalytics from '../../components/PerformanceAnalytics';
 
 export default function Payments() {
   const { colors } = useTheme();
@@ -14,6 +15,7 @@ export default function Payments() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   useEffect(() => {
     fetchPayments();
@@ -134,6 +136,29 @@ export default function Payments() {
         </Text>
       </View>
 
+      <TouchableOpacity 
+        style={[styles.analyticsToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={() => setShowAnalytics(!showAnalytics)}
+      >
+        <Text style={[styles.analyticsToggleText, { color: colors.primary }]}>
+          {showAnalytics ? 'Hide' : 'Show'} AI Performance Insights
+        </Text>
+      </TouchableOpacity>
+
+      {showAnalytics && payments.length > 0 && (
+        <PerformanceAnalytics
+          attendanceData={{}} // We'll need to fetch this separately
+          workerInfo={{
+            name: 'Worker',
+            jobCategory: 'Various',
+            experience: 0,
+          }}
+          workDays={payments.reduce((sum, p) => sum + (p.workDays || 0), 0)}
+          totalEarnings={totalEarnings}
+          period="Overall"
+        />
+      )}
+
       {payments.length === 0 ? (
         <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
           <DollarSign size={48} color="#D1D5DB" />
@@ -211,6 +236,19 @@ const styles = StyleSheet.create({
   },
   earningsSubtext: {
     fontSize: 14,
+  },
+  analyticsToggle: {
+    marginHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  analyticsToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   paymentsList: {
     paddingHorizontal: 20,

@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
 import { User, LogOut, CreditCard as Edit, Briefcase, Building, Mail, Phone } from 'lucide-react-native';
+import { Brain } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -121,6 +122,14 @@ export default function Profile() {
         >
           <Edit size={20} color={colors.primary} />
           <Text style={[styles.actionButtonText, { color: colors.primary }]}>{t('editProfile')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => router.push('/ai-insights')}
+        >
+          <Brain size={20} color={colors.secondary} />
+          <Text style={[styles.actionButtonText, { color: colors.secondary }]}>AI Business Insights</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 

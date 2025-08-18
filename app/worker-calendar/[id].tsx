@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import PaymentModal from '../../components/PaymentModal';
 import { paymentService, PaymentRequest } from '../../services/PaymentService';
+import PerformanceAnalytics from '../../components/PerformanceAnalytics';
 
 export default function WorkerCalendar() {
   const { id, jobTitle, salary } = useLocalSearchParams();
@@ -27,6 +28,7 @@ export default function WorkerCalendar() {
   const [loading, setLoading] = useState(true);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   useEffect(() => {
     if (workerId) {
@@ -477,6 +479,29 @@ export default function WorkerCalendar() {
           </Text>
         </TouchableOpacity>
 
+        <TouchableOpacity 
+          style={[styles.analyticsButton, { backgroundColor: colors.primary }]}
+          onPress={() => setShowAnalytics(!showAnalytics)}
+        >
+          <Text style={styles.analyticsButtonText}>
+            {showAnalytics ? 'Hide' : 'Show'} AI Analytics
+          </Text>
+        </TouchableOpacity>
+
+        {showAnalytics && (
+          <PerformanceAnalytics
+            attendanceData={attendanceData}
+            workerInfo={{
+              name: workerData?.applicantName || workerData?.name || 'Worker',
+              jobCategory: workerJobTitle,
+              experience: workerData?.experience || 0,
+            }}
+            workDays={workDays}
+            totalEarnings={monthlyTotal}
+            period={`${getMonthName(currentMonth)} ${currentYear}`}
+          />
+        )}
+
         <PaymentModal
           visible={paymentModalVisible}
           onClose={() => setPaymentModalVisible(false)}
@@ -663,6 +688,18 @@ const styles = StyleSheet.create({
   payButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  analyticsButton: {
+    marginHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  analyticsButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   legend: {

@@ -70,6 +70,9 @@ If you still get permission errors:
 - **Location Services**: Get directions to job locations
 - **Real-time Updates**: Live updates using Firebase
 - **Payments**: Razorpay and PhonePe integration
+- **AI-Powered Features**: Performance analytics and voice input with Google Gemini
+- **Voice-to-Text**: Convert speech to text for job postings and applications
+- **Performance Analytics**: AI-generated insights on worker performance and business metrics
 
 ## Payment Gateway Setup
 
@@ -114,6 +117,41 @@ For mobile apps, you'll need to:
 3. **Create development build** using Expo Dev Client
 4. **Test on physical devices** (payment gateways don't work in simulators)
 
+## AI Features Setup
+
+### Google Gemini Integration
+
+The app uses Google Gemini AI for performance analytics and text enhancement:
+
+1. **Get Gemini API Key**:
+   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+   - Copy the API key
+
+2. **Configure API Key**:
+   - Open `services/GeminiService.ts`
+   - Replace `YOUR_GEMINI_API_KEY_HERE` with your actual API key
+   - Example: `const GEMINI_API_KEY = 'AIzaSyC...your-key-here';`
+
+3. **AI Features Available**:
+   - **Performance Analytics**: AI analysis of worker attendance patterns
+   - **Voice-to-Text**: Convert speech to enhanced text for job postings
+   - **Business Insights**: AI-generated recommendations for employers
+   - **Text Enhancement**: Improve job descriptions and applications
+
+### Voice Features
+
+- **Microphone Permission**: Required for voice input features
+- **Speech-to-Text**: Converts voice to text and enhances with AI
+- **Text-to-Speech**: Provides audio feedback during voice interactions
+
+### Security Notes for AI
+
+- **API Key Security**: Never expose your Gemini API key in client-side code for production
+- **Data Privacy**: User data sent to Gemini should be anonymized when possible
+- **Rate Limiting**: Implement proper rate limiting for API calls
+- **Fallback Handling**: Always provide fallback functionality when AI services are unavailable
+
 ## Tech Stack
 
 - **Frontend**: React Native with Expo
@@ -121,3 +159,5 @@ For mobile apps, you'll need to:
 - **Navigation**: Expo Router
 - **UI Components**: Custom components with Lucide icons
 - **Maps**: Expo Location and native map integration
+- **AI**: Google Gemini for performance analytics and voice features
+- **Voice**: Expo Speech and Audio for voice-to-text functionality
