@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // You need to add your Gemini API key here
-const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE'; // Replace with your actual API key
+const GEMINI_API_KEY = 'AIzaSyDc_9EjeOOoXpnaZn8lvIde_mTA4Nazkqg'; // Replace with your actual API key
 
 class GeminiService {
   private genAI: GoogleGenerativeAI;
