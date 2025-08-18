@@ -5,7 +5,6 @@ import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { ArrowLeft, User, Phone, Clock, FileText, Briefcase } from 'lucide-react-native';
 import * as MailComposer from 'expo-mail-composer';
-import VoiceInput from '../../components/VoiceInput';
 
 export default function ApplyJob() {
   const { id } = useLocalSearchParams();
@@ -169,12 +168,6 @@ Applied on: ${new Date().toLocaleDateString()}
             </View>
           </View>
         </View>
-
-        <VoiceInput
-          onTextReceived={setAdditionalInfo}
-          context="application"
-          placeholder="Tell us about yourself using voice"
-        />
 
         <View style={styles.form}>
           <Text style={styles.formTitle}>Application Details</Text>

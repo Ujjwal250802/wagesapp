@@ -5,7 +5,6 @@ import { collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { Building, Mail, Phone, MapPin, DollarSign, FileText, Briefcase, Navigation } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import VoiceInput from '../../components/VoiceInput';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -230,12 +229,6 @@ export default function PostJob() {
             keyboardType="numeric"
           />
         </View>
-
-        <VoiceInput
-          onTextReceived={setDescription}
-          context="job_posting"
-          placeholder="Describe your job requirements using voice"
-        />
 
         <View style={[styles.inputContainer, styles.textAreaContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <FileText size={20} color={colors.textSecondary} style={[styles.inputIcon, styles.textAreaIcon]} />
