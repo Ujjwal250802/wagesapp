@@ -10,6 +10,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
 import LanguageSelector from '../../components/LanguageSelector';
+import AIJobRecommendations from '../../components/AIJobRecommendations';
 
 const JOB_CATEGORIES = [
   'Electrician', 'Plumber', 'Mechanic', 'Cook', 'Peon', 
@@ -23,6 +24,7 @@ export default function MainScreen() {
   const [applications, setApplications] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState(null);
   const [userType, setUserType] = useState(null);
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export default function MainScreen() {
           if (docSnap.exists()) {
             setUserType('worker');
             fetchJobs();
+            setUserProfile(docSnap.data());
           } else {
             // Check if user is an organization
             docRef = doc(db, 'organizations', user.uid);
@@ -298,6 +301,13 @@ export default function MainScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {userType === 'worker' && userProfile && jobs.length > 0 && (
+        <AIJobRecommendations 
+          workerProfile={userProfile} 
+          availableJobs={jobs} 
+        />
+      )}
 
       {jobs.length === 0 ? (
         <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
