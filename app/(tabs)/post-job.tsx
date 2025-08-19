@@ -9,7 +9,6 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
 import LanguageSelector from '../../components/LanguageSelector';
-import AIJobDescriptionHelper from '../../components/AIJobDescriptionHelper';
 
 const JOB_CATEGORIES = [
   'Electrician', 'Plumber', 'Mechanic', 'Cook', 'Peon', 
@@ -30,7 +29,6 @@ export default function PostJob() {
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
   const [coordinates, setCoordinates] = useState(null);
   const [gettingLocation, setGettingLocation] = useState(false);
-  const [aiHelperVisible, setAiHelperVisible] = useState(false);
 
   const getCurrentLocation = async () => {
     setGettingLocation(true);
@@ -125,13 +123,6 @@ export default function PostJob() {
           </View>
         </View>
       </View>
-      
-      <AIJobDescriptionHelper
-        visible={aiHelperVisible}
-        onClose={() => setAiHelperVisible(false)}
-        category={category}
-        onDescriptionGenerated={setDescription}
-      />
 
       <View style={styles.form}>
         <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -218,15 +209,6 @@ export default function PostJob() {
               thumbColor={useCurrentLocation ? '#FFFFFF' : '#F3F4F6'}
             />
           </View>
-          
-          <TouchableOpacity
-            style={[styles.aiHelperButton, { backgroundColor: colors.background, borderColor: colors.primary }]}
-            onPress={() => setAiHelperVisible(true)}
-          >
-            <Text style={[styles.aiHelperButtonText, { color: colors.primary }]}>
-              ✨ Get AI Help with Description
-            </Text>
-          </TouchableOpacity>
           {coordinates && (
             <View style={[styles.coordinatesDisplay, { backgroundColor: colors.background }]}>
               <Text style={[styles.coordinatesText, { color: colors.primary }]}>
@@ -380,17 +362,5 @@ const styles = StyleSheet.create({
   coordinatesText: {
     fontSize: 12,
     fontFamily: 'monospace',
-  },
-  aiHelperButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  aiHelperButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
 });
