@@ -4,7 +4,7 @@ const API_KEY = 'AIzaSyDfO3oWskF7Pj99ua_72pZxEDQgfGEl8Fo'; // Add this to your e
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 export class GeminiService {
-  private model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  private model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
   async getJobRecommendations(workerProfile: any, availableJobs: any[]) {
     try {
@@ -24,49 +24,17 @@ export class GeminiService {
         - Description: ${job.description}
         `).join('\n')}
 
-        Recommend the top 3 most suitable jobs for this worker and explain why each job is a good match.
+        Recommend the top 3 most suitable jobs for this worker and explain why each job is a good match. 
         Consider location proximity, skill match, experience level, and salary expectations.
-        
-        Please respond with a valid JSON object in this exact format:
-        {
-          "recommendations": [
-            {
-              "jobId": "job_id_here",
-              "matchScore": 85,
-              "reason": "Brief explanation of why this job matches"
-            }
-          ]
-        }
+        Format as JSON with job IDs and match reasons.
       `;
 
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      const text = response.text();
-      
-      // Clean the response text to extract JSON
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-      
-      // Fallback if JSON parsing fails
-      return {
-        recommendations: availableJobs.slice(0, 3).map((job, index) => ({
-          jobId: job.id,
-          matchScore: 75 + (index * 5),
-          reason: `Good match based on job category and location`
-        }))
-      };
+      return JSON.parse(response.text());
     } catch (error) {
       console.error('Gemini job recommendation error:', error);
-      // Return fallback recommendations instead of null
-      return {
-        recommendations: availableJobs.slice(0, 3).map((job, index) => ({
-          jobId: job.id,
-          matchScore: 70 + (index * 5),
-          reason: `Recommended based on your profile`
-        }))
-      };
+      return null;
     }
   }
 
@@ -90,23 +58,7 @@ export class GeminiService {
       return response.text();
     } catch (error) {
       console.error('Gemini job description error:', error);
-      // Return a fallback description
-      return `We are looking for a skilled ${category} to join our team. 
-
-Requirements: ${requirements}
-
-Responsibilities:
-- Perform ${category.toLowerCase()} duties as assigned
-- Maintain quality standards
-- Follow safety protocols
-- Work collaboratively with team members
-
-What we offer:
-- Competitive daily wages
-- Safe working environment
-- Opportunity for skill development
-
-Apply now if you have the required skills and experience!`;
+      return null;
     }
   }
 
@@ -121,40 +73,21 @@ Apply now if you have the required skills and experience!`;
         - Bio: ${profileData.bio || 'Not provided'}
         - Phone: ${profileData.phone ? 'Provided' : 'Missing'}
         
-        Please respond with a valid JSON object in this format:
-        {
-          "completenessScore": 75,
-          "suggestions": ["Add more details about your experience", "Include specific skills"],
-          "skillsToHighlight": ["Reliability", "Hard work"],
-          "tips": ["Add a professional photo", "Write a compelling bio"]
-        }
+        Provide:
+        1. Profile completeness score (0-100)
+        2. Specific suggestions to improve the profile
+        3. Skills they should highlight based on their experience
+        4. Tips to make their profile more attractive to employers
+        
+        Format as JSON with clear sections.
       `;
 
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      const text = response.text();
-      
-      // Clean the response text to extract JSON
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-      
-      // Fallback response
-      return {
-        completenessScore: 60,
-        suggestions: ["Add more details about your work experience", "Include your skills and specializations"],
-        skillsToHighlight: ["Reliability", "Punctuality", "Hard work"],
-        tips: ["Write a brief bio about yourself", "Add your contact information"]
-      };
+      return JSON.parse(response.text());
     } catch (error) {
       console.error('Gemini profile analysis error:', error);
-      return {
-        completenessScore: 50,
-        suggestions: ["Complete your profile with more details"],
-        skillsToHighlight: ["Work experience", "Skills"],
-        tips: ["Add a profile photo", "Write about your experience"]
-      };
+      return null;
     }
   }
 
@@ -185,15 +118,7 @@ Apply now if you have the required skills and experience!`;
       return response.text();
     } catch (error) {
       console.error('Gemini application message error:', error);
-      // Return a fallback message
-      return `Dear Sir/Madam,
-
-I am interested in the ${jobDetails.category} position at ${jobDetails.organizationName}. I have ${workerProfile.experience || 'relevant'} experience and am available to start immediately. I am hardworking, reliable, and committed to doing quality work.
-
-Thank you for considering my application.
-
-Best regards,
-${workerProfile.name}`;
+      return null;
     }
   }
 
@@ -255,19 +180,7 @@ ${workerProfile.name}`;
       return response.text();
     } catch (error) {
       console.error('Gemini work report error:', error);
-      // Return a fallback report
-      const attendanceRate = totalDays > 0 ? ((workDays / totalDays) * 100).toFixed(1) : 0;
-      return `Work Performance Report for ${workerName}
-
-Period: ${period}
-Attendance Rate: ${attendanceRate}%
-Days Present: ${workDays} out of ${totalDays}
-
-${attendanceRate >= 90 ? 'Excellent attendance record!' : 
-  attendanceRate >= 75 ? 'Good attendance with room for improvement.' : 
-  'Attendance needs improvement for better performance.'}
-
-${workerName} shows commitment to work and maintains professional standards.`;
+      return null;
     }
   }
 
