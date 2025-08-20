@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Platform, 
 import { useLocalSearchParams, router } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase-config';
-import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink, Car, User as Walk } from 'lucide-react-native';
+import { ArrowLeft, Navigation, Clock, MapPin, ExternalLink, Car } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import * as Linking from 'expo-linking';
 
@@ -13,12 +13,11 @@ export default function Directions() {
   const params = useLocalSearchParams();
   const jobId = typeof params.id === 'string' ? params.id : params.id?.[0];
   
-  const [job, setJob] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
+  const [job, setJob] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [distance, setDistance] = useState(null);
-  const [duration, setDuration] = useState(null);
-  const [directions, setDirections] = useState([]);
+  const [distance, setDistance] = useState<number | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
 
   useEffect(() => {
     if (jobId) {
@@ -55,7 +54,7 @@ export default function Directions() {
           // Calculate distance if job has coordinates
           if (jobData.coordinates) {
             const dist = calculateDistance(userCoords, jobData.coordinates);
-            setDistance(dist.toFixed(1));
+            setDistance(Number(dist.toFixed(1)));
             // Estimate duration (assuming average speed of 30 km/h for driving)
             setDuration(Math.round((dist / 30) * 60));
           }
@@ -74,7 +73,7 @@ export default function Directions() {
     }
   };
 
-  const calculateDistance = (coord1, coord2) => {
+  const calculateDistance = (coord1: any, coord2: any) => {
     const R = 6371; // Radius of the Earth in kilometers
     const dLat = (coord2.latitude - coord1.latitude) * Math.PI / 180;
     const dLon = (coord2.longitude - coord1.longitude) * Math.PI / 180;
@@ -102,13 +101,12 @@ export default function Directions() {
     });
 
     if (Platform.OS === 'web') {
-      window.open(url, '_blank');
+      window.open(url as string, '_blank');
     } else {
-      Linking.canOpenURL(url).then((supported) => {
+      Linking.canOpenURL(url as string).then((supported) => {
         if (supported) {
-          Linking.openURL(url);
+          Linking.openURL(url as string);
         } else {
-          // Fallback to web version
           const webUrl = `https://www.google.com/maps/dir/${originLat},${originLng}/${destLat},${destLng}`;
           Linking.openURL(webUrl);
         }
@@ -143,8 +141,6 @@ export default function Directions() {
     }
 
     try {
-      // For now, we'll show a simple directions interface
-      // In a production app, you'd integrate with Google Directions API
       Alert.alert(
         'Directions',
         `Distance: ${distance} km\nEstimated time: ${duration} minutes\n\nFor detailed turn-by-turn directions, please use Google Maps or Apple Maps.`,
@@ -293,10 +289,6 @@ export default function Directions() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
