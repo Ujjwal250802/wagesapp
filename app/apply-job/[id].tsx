@@ -72,7 +72,9 @@ export default function ApplyJob() {
       await addDoc(collection(db, 'applications'), {
         jobId: id,
         jobTitle: job.category,
+        jobDescription: job.description,
         organizationName: job.organizationName,
+        organizationEmail: job.email,
         applicantId: user.uid,
         applicantName: applicantName,
         applicantPhone: applicantPhone,
@@ -81,6 +83,7 @@ export default function ApplyJob() {
         additionalInfo: additionalInfo,
         appliedAt: new Date(),
         status: 'pending',
+        workerStatus: 'active',
       });
 
       // Send email to employer

@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
-import { Search, MapPin, Clock, DollarSign, User, Mail, Phone } from 'lucide-react-native';
+import { Search, MapPin, Clock, DollarSign, User, Mail, Phone, Briefcase, LogOut, AlertTriangle } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
 import LanguageSelector from '../../components/LanguageSelector';
+import * as MailComposer from 'expo-mail-composer';
+import { Alert } from 'react-native';
 
 const JOB_CATEGORIES = [
   'Electrician', 'Plumber', 'Mechanic', 'Cook', 'Peon', 
@@ -21,6 +23,7 @@ export default function MainScreen() {
   const { t } = useLanguage();
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [currentJobs, setCurrentJobs] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [userType, setUserType] = useState(null);
@@ -36,6 +39,7 @@ export default function MainScreen() {
           if (docSnap.exists()) {
             setUserType('worker');
             fetchJobs();
+            fetchCurrentJobs();
           } else {
             // Check if user is an organization
             docRef = doc(db, 'organizations', user.uid);
@@ -88,6 +92,103 @@ export default function MainScreen() {
       console.error('Error fetching jobs:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCurrentJobs = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Get accepted applications for this worker
+      const applicationsQuery = query(
+        collection(db, 'applications'), 
+        where('applicantId', '==', user.uid),
+        where('status', '==', 'accepted')
+      );
+      
+      const snapshot = await getDocs(applicationsQuery);
+      const currentJobsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Filter only active jobs (not left)
+      const activeJobs = currentJobsData.filter(job => job.workerStatus !== 'inactive');
+      setCurrentJobs(activeJobs);
+    } catch (error) {
+      console.error('Error fetching current jobs:', error);
+    }
+  };
+
+  const handleLeaveJob = async (job) => {
+    Alert.alert(
+      'Leave Job',
+      `Are you sure you want to leave the job "${job.jobTitle}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Yes, Leave Job', 
+          style: 'destructive',
+          onPress: () => leaveJob(job)
+        }
+      ]
+    );
+  };
+
+  const leaveJob = async (job) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Update application status to inactive
+      await updateDoc(doc(db, 'applications', job.id), {
+        workerStatus: 'inactive',
+        leftAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      // Send email to employer
+      const emailBody = `
+Job Resignation Notice
+
+Dear Employer,
+
+This is to inform you that ${job.applicantName} has decided to leave the job "${job.jobTitle}".
+
+Worker Details:
+Name: ${job.applicantName}
+Phone: ${job.applicantPhone}
+Email: ${user.email}
+
+The worker's status has been updated to inactive in the system.
+
+Thank you for your understanding.
+
+Best regards,
+ROZGAR Team
+      `;
+
+      try {
+        await MailComposer.composeAsync({
+          recipients: [job.organizationEmail || ''],
+          subject: `Job Resignation - ${job.jobTitle}`,
+          body: emailBody,
+        });
+      } catch (emailError) {
+        console.log('Email composer not available, but status was updated');
+      }
+
+      // Refresh current jobs
+      fetchCurrentJobs();
+      
+      Alert.alert(
+        'Job Left Successfully',
+        'You have successfully left the job. The employer has been notified.'
+      );
+    } catch (error) {
+      console.error('Error leaving job:', error);
+      Alert.alert('Error', 'Failed to leave job. Please try again.');
     }
   };
 
@@ -161,6 +262,38 @@ export default function MainScreen() {
     </TouchableOpacity>
   );
 
+  const renderCurrentJobCard = ({ item }) => (
+    <View style={[styles.currentJobCard, { backgroundColor: colors.surface }]}>
+      <View style={styles.currentJobHeader}>
+        <View style={styles.currentJobInfo}>
+          <Text style={[styles.currentJobTitle, { color: colors.text }]}>{item.jobTitle}</Text>
+          <Text style={[styles.currentJobOrg, { color: colors.textSecondary }]}>{item.organizationName}</Text>
+        </View>
+        <View style={[styles.activeStatusBadge, { backgroundColor: colors.success }]}>
+          <Text style={styles.activeStatusText}>Active</Text>
+        </View>
+      </View>
+      
+      <Text style={[styles.currentJobDescription, { color: colors.text }]} numberOfLines={2}>
+        {item.jobDescription || 'No description available'}
+      </Text>
+      
+      <View style={styles.currentJobFooter}>
+        <View style={styles.currentJobMeta}>
+          <Text style={[styles.currentJobDate, { color: colors.textSecondary }]}>
+            Started: {new Date(item.appliedAt?.toDate()).toLocaleDateString()}
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={[styles.leaveJobButton, { backgroundColor: colors.error }]}
+          onPress={() => handleLeaveJob(item)}
+        >
+          <LogOut size={16} color="#FFFFFF" />
+          <Text style={styles.leaveJobText}>Leave Job</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
   const renderApplicationCard = ({ item }) => (
     <TouchableOpacity 
       style={styles.applicationCard}
@@ -261,6 +394,24 @@ export default function MainScreen() {
         </View>
       </View>
 
+      {/* Current Jobs Section */}
+      {currentJobs.length > 0 && (
+        <View style={[styles.currentJobsSection, { backgroundColor: colors.surface }]}>
+          <View style={styles.currentJobsHeader}>
+            <Briefcase size={20} color={colors.primary} />
+            <Text style={[styles.currentJobsTitle, { color: colors.text }]}>Current Jobs</Text>
+          </View>
+          <FlatList
+            data={currentJobs}
+            renderItem={renderCurrentJobCard}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.currentJobsList}
+          />
+        </View>
+      )}
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.categoriesContainer, { backgroundColor: colors.surface }]}>
         <TouchableOpacity 
           style={[
@@ -345,6 +496,91 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     marginTop: 4,
+  },
+  currentJobsSection: {
+    paddingVertical: 16,
+    marginBottom: 8,
+  },
+  currentJobsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+    gap: 8,
+  },
+  currentJobsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  currentJobsList: {
+    paddingHorizontal: 20,
+  },
+  currentJobCard: {
+    width: 280,
+    padding: 16,
+    borderRadius: 12,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  currentJobHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  currentJobInfo: {
+    flex: 1,
+  },
+  currentJobTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  currentJobOrg: {
+    fontSize: 14,
+  },
+  activeStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  activeStatusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#FFFFFF',
+  },
+  currentJobDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  currentJobFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  currentJobMeta: {
+    flex: 1,
+  },
+  currentJobDate: {
+    fontSize: 12,
+  },
+  leaveJobButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 4,
+  },
+  leaveJobText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
   categoriesContainer: {
     paddingHorizontal: 20,
