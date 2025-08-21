@@ -42,7 +42,9 @@ export default function AppliedJobs() {
         return dateB - dateA;
       });
 
-      setAppliedJobs(applicationsData);
+      // Filter out jobs that have been left (status: 'left')
+      const activeApplications = applicationsData.filter(app => app.status !== 'left');
+      setAppliedJobs(activeApplications);
     } catch (error) {
       console.error('Error fetching applied jobs:', error);
     } finally {
@@ -59,13 +61,15 @@ export default function AppliedJobs() {
         <Text style={[styles.jobTitle, { color: colors.text }]}>{item.jobTitle}</Text>
         <View style={[styles.statusBadge, 
           item.status === 'accepted' && styles.acceptedBadge,
-          item.status === 'rejected' && styles.rejectedBadge
+          item.status === 'rejected' && styles.rejectedBadge,
+          item.status === 'left' && styles.leftBadge
         ]}>
           <Text style={[styles.statusText,
             item.status === 'accepted' && styles.acceptedText,
-            item.status === 'rejected' && styles.rejectedText
+            item.status === 'rejected' && styles.rejectedText,
+            item.status === 'left' && styles.leftText
           ]}>
-            {item.status || 'Pending'}
+            {item.status === 'left' ? 'Left Job' : (item.status || 'Pending')}
           </Text>
         </View>
       </View>
@@ -190,6 +194,9 @@ const styles = StyleSheet.create({
   rejectedBadge: {
     backgroundColor: '#FEE2E2',
   },
+  leftBadge: {
+    backgroundColor: '#FEF3C7',
+  },
   statusText: {
     fontSize: 12,
     fontWeight: '500',
@@ -201,6 +208,9 @@ const styles = StyleSheet.create({
   },
   rejectedText: {
     color: '#991B1B',
+  },
+  leftText: {
+    color: '#92400E',
   },
   organizationName: {
     fontSize: 14,

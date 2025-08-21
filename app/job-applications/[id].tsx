@@ -28,7 +28,8 @@ export default function JobApplications() {
       // Fetch applications for this job
       const applicationsQuery = query(
         collection(db, 'applications'),
-        where('jobId', '==', id)
+        where('jobId', '==', id),
+        where('status', 'in', ['pending', 'accepted', 'rejected'])
       );
       const applicationsSnapshot = await getDocs(applicationsQuery);
       const applicationsData = applicationsSnapshot.docs.map(doc => ({

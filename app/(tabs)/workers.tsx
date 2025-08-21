@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
-import { User, Briefcase, Calendar, Clock } from 'lucide-react-native';
+import { User, Briefcase, Calendar, Clock, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -40,7 +40,7 @@ export default function Workers() {
       const applicationsQuery = query(
         collection(db, 'applications'), 
         where('jobId', 'in', jobIds),
-        where('status', '==', 'accepted')
+        where('status', 'in', ['accepted', 'left'])
       );
       const applicationsSnapshot = await getDocs(applicationsQuery);
       
@@ -49,7 +49,7 @@ export default function Workers() {
         // Find the corresponding job to get salary info
         const job = jobs.find(j => j.id === appData.jobId);
         return {
-        id: doc.id,
+          id: doc.id,
           ...appData,
           salary: job?.salary || 500 // Default daily rate if not found
         };
@@ -73,10 +73,39 @@ export default function Workers() {
     }
   };
 
+  const handleDeleteWorker = async (workerId, workerName) => {
+    Alert.alert(
+      'Delete Worker',
+      `Are you sure you want to remove "${workerName}" from your workers list?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => deleteWorker(workerId)
+        }
+      ]
+    );
+  };
+
+  const deleteWorker = async (workerId) => {
+    try {
+      // Delete the application record
+      await deleteDoc(doc(db, 'applications', workerId));
+      
+      // Remove from local state
+      setAcceptedWorkers(prevWorkers => prevWorkers.filter(worker => worker.id !== workerId));
+      
+      Alert.alert('Success', 'Worker removed successfully');
+    } catch (error) {
+      console.error('Error deleting worker:', error);
+      Alert.alert('Error', 'Failed to remove worker. Please try again.');
+    }
+  };
+
   const renderWorkerCard = ({ item }) => (
-    <TouchableOpacity 
+    <View 
       style={[styles.workerCard, { backgroundColor: colors.surface }]}
-      onPress={() => router.push(`/worker-calendar/${item.applicantId}?jobTitle=${encodeURIComponent(item.jobTitle)}&salary=${item.salary || 500}`)}
     >
       <View style={styles.workerHeader}>
         <View style={[styles.workerAvatar, { backgroundColor: colors.background }]}>
@@ -102,11 +131,39 @@ export default function Workers() {
           <Text style={[styles.phoneNumber, { color: colors.text }]}>{item.applicantPhone}</Text>
           <Text style={[styles.experience, { color: colors.textSecondary }]}>{item.experience} {t('yearsExp')}</Text>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: colors.background }]}>
-          <Text style={[styles.statusText, { color: colors.secondary }]}>{t('active')}</Text>
+        <View style={[styles.statusBadge, { 
+          backgroundColor: item.status === 'left' ? colors.error + '20' : colors.background 
+        }]}>
+          <Text style={[styles.statusText, { 
+            color: item.status === 'left' ? colors.error : colors.secondary 
+          }]}>
+            {item.status === 'left' ? 'Inactive' : t('active')}
+          </Text>
         </View>
       </View>
-    </TouchableOpacity>
+      
+      <View style={styles.actionButtons}>
+        {item.status !== 'left' && (
+          <TouchableOpacity 
+            style={[styles.calendarButton, { backgroundColor: colors.background }]}
+            onPress={() => router.push(`/worker-calendar/${item.applicantId}?jobTitle=${encodeURIComponent(item.jobTitle)}&salary=${item.salary || 500}`)}
+          >
+            <Calendar size={16} color={colors.primary} />
+            <Text style={[styles.calendarButtonText, { color: colors.primary }]}>Calendar</Text>
+          </TouchableOpacity>
+        )}
+        
+        {item.status === 'left' && (
+          <TouchableOpacity 
+            style={[styles.deleteButton, { backgroundColor: colors.background }]}
+            onPress={() => handleDeleteWorker(item.id, item.applicantName)}
+          >
+            <Trash2 size={16} color={colors.error} />
+            <Text style={[styles.deleteButtonText, { color: colors.error }]}>Remove</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
   );
 
   if (loading) {
@@ -255,6 +312,40 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 12,
+    marginTop: 12,
+  },
+  calendarButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  calendarButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  deleteButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  deleteButtonText: {
     fontSize: 12,
     fontWeight: '500',
   },

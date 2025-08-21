@@ -117,11 +117,13 @@ ${application.organizationName}
       </TouchableOpacity>
 
       <ScrollView style={styles.content}>
-        <View style={styles.header}>
+          application.status === 'rejected' && styles.rejectedBadge,
+          application.status === 'left' && styles.leftBadge
           <Text style={styles.jobTitle}>{application.jobTitle}</Text>
           <View style={[styles.statusBadge, 
             application.status === 'accepted' && styles.acceptedBadge,
-            application.status === 'rejected' && styles.rejectedBadge
+            application.status === 'rejected' && styles.rejectedText,
+            application.status === 'left' && styles.leftText
           ]}>
             <Text style={[styles.statusText,
               application.status === 'accepted' && styles.acceptedText,
@@ -174,11 +176,11 @@ ${application.organizationName}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Application Details</Text>
           <Text style={styles.appliedDate}>
-            Applied on: {new Date(application.appliedAt?.toDate()).toLocaleDateString()}
+            {application.status === 'left' ? 'Worker Left' : (application.status || 'Pending')}
           </Text>
         </View>
 
-        {(!application.status || application.status === 'pending') && (
+        {(!application.status || application.status === 'pending') && application.status !== 'left' && (
           <View style={styles.actionsContainer}>
             <TouchableOpacity 
               style={styles.rejectButton}
@@ -257,6 +259,9 @@ const styles = StyleSheet.create({
   rejectedBadge: {
     backgroundColor: '#FEE2E2',
   },
+  leftBadge: {
+    backgroundColor: '#FEF3C7',
+  },
   statusText: {
     fontSize: 14,
     fontWeight: '600',
@@ -268,6 +273,9 @@ const styles = StyleSheet.create({
   },
   rejectedText: {
     color: '#991B1B',
+  },
+  leftText: {
+    color: '#92400E',
   },
   section: {
     backgroundColor: '#FFFFFF',

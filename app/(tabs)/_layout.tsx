@@ -126,6 +126,17 @@ export default function TabLayout() {
       )}
       {userType === 'worker' && (
         <Tabs.Screen
+          name="current-jobs"
+          options={{
+            title: t('currentJobs'),
+            tabBarIcon: ({ size, color }) => (
+              <Briefcase size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {userType === 'worker' && (
+        <Tabs.Screen
           name="payments"
           options={{
             title: t('payments'),
@@ -171,6 +182,14 @@ export default function TabLayout() {
       {userType === 'organization' && (
         <Tabs.Screen
           name="applied-jobs"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      )}
+      {userType === 'organization' && (
+        <Tabs.Screen
+          name="current-jobs"
           options={{
             href: null, // This hides the tab
           }}

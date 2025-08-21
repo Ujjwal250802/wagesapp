@@ -30,6 +30,7 @@ const translations = {
     appliedJobs: 'Applied Jobs',
     payments: 'Payments',
     profile: 'Profile',
+    currentJobs: 'Current Jobs',
     
     // Common
     loading: 'Loading...',
@@ -192,6 +193,7 @@ const translations = {
     appliedJobs: 'आवेदित नौकरियां',
     payments: 'भुगतान',
     profile: 'प्रोफाइल',
+    currentJobs: 'वर्तमान नौकरियां',
     
     // Common
     loading: 'लोड हो रहा है...',
@@ -354,6 +356,7 @@ const translations = {
     appliedJobs: 'अर्ज केलेल्या नोकऱ्या',
     payments: 'पेमेंट',
     profile: 'प्रोफाइल',
+    currentJobs: 'सध्याच्या नोकऱ्या',
     
     // Common
     loading: 'लोड होत आहे...',
@@ -516,6 +519,7 @@ const translations = {
     appliedJobs: 'ਅਰਜ਼ੀ ਦਿੱਤੀਆਂ ਨੌਕਰੀਆਂ',
     payments: 'ਭੁਗਤਾਨ',
     profile: 'ਪ੍ਰੋਫਾਈਲ',
+    currentJobs: 'ਮੌਜੂਦਾ ਨੌਕਰੀਆਂ',
     
     // Common
     loading: 'ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...',
@@ -612,6 +616,7 @@ const translations = {
     appliedJobs: 'અરજી કરેલી નોકરીઓ',
     payments: 'પેમેન્ટ',
     profile: 'પ્રોફાઇલ',
+    currentJobs: 'વર્તમાન નોકરીઓ',
     
     // Common
     loading: 'લોડ થઈ રહ્યું છે...',
@@ -708,6 +713,7 @@ const translations = {
     appliedJobs: 'আবেদনকৃত কাজ',
     payments: 'পেমেন্ট',
     profile: 'প্রোফাইল',
+    currentJobs: 'বর্তমান কাজ',
     
     // Common
     loading: 'লোড হচ্ছে...',
@@ -796,6 +802,7 @@ const translations = {
     appliedJobs: 'దరఖాస్తు చేసిన పనులు',
     payments: 'చెల్లింపులు',
     profile: 'ప్రొఫైల్',
+    currentJobs: 'ప్రస్తుత పనులు',
     
     // Common
     loading: 'లోడ్ అవుతోంది...',
@@ -861,6 +868,7 @@ const translations = {
     appliedJobs: 'ಅರ್ಜಿ ಸಲ್ಲಿಸಿದ ಕೆಲಸಗಳು',
     payments: 'ಪಾವತಿಗಳು',
     profile: 'ಪ್ರೊಫೈಲ್',
+    currentJobs: 'ಪ್ರಸ್ತುತ ಕೆಲಸಗಳು',
     
     // Common
     loading: 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...',
@@ -926,6 +934,7 @@ const translations = {
     appliedJobs: 'अर्जी दिहल काम',
     payments: 'पेमेंट',
     profile: 'प्रोफाइल',
+    currentJobs: 'वर्तमान काम',
     
     // Common
     loading: 'लोड हो रहल बा...',

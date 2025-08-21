@@ -122,7 +122,9 @@ export default function MainScreen() {
         return dateB - dateA;
       });
 
-      setApplications(applicationsData);
+      // Filter to show only pending and accepted applications (not left ones)
+      const activeApplications = applicationsData.filter(app => app.status !== 'left');
+      setApplications(activeApplications);
     } catch (error) {
       console.error('Error fetching applications:', error);
     } finally {
