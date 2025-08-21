@@ -132,7 +132,6 @@ ${application.organizationName}
               {application.status || 'Pending'}
             </Text>
           </View>
-        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Applicant Information</Text>
