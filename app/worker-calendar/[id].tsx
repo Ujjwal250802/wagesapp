@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
-import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { ArrowLeft, DollarSign, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
 import PaymentModal from '../../components/PaymentModal';
@@ -12,7 +12,7 @@ export default function WorkerCalendar() {
   const workerId = typeof id === 'string' ? id : id?.[0];
   const workerJobTitle = typeof jobTitle === 'string' ? jobTitle : jobTitle?.[0];
   const dailyRate = parseInt(typeof salary === 'string' ? salary : salary?.[0] || '500');
-  
+
   const [workerData, setWorkerData] = useState(null);
   const [attendanceData, setAttendanceData] = useState({});
   const [markedDates, setMarkedDates] = useState({});
@@ -39,11 +39,11 @@ export default function WorkerCalendar() {
   const fetchWorkerData = async () => {
     try {
       const applicationsQuery = query(
-        collection(db, 'applications'), 
+        collection(db, 'applications'),
         where('applicantId', '==', workerId)
       );
       const applicationsSnapshot = await getDocs(applicationsQuery);
-      
+
       if (!applicationsSnapshot.empty) {
         const workerApp = applicationsSnapshot.docs[0].data();
         setWorkerData(workerApp);
@@ -69,7 +69,7 @@ export default function WorkerCalendar() {
 
       const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
       const attendanceDoc = await getDoc(doc(db, 'attendance', attendanceId));
-      
+
       if (attendanceDoc.exists()) {
         const data = attendanceDoc.data();
         setAttendanceData(data.attendance || {});
@@ -85,7 +85,7 @@ export default function WorkerCalendar() {
           attendance: {},
           dailyRate: dailyRate,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         };
         await setDoc(doc(db, 'attendance', attendanceId), initialData);
         setAttendanceData({});
@@ -98,32 +98,30 @@ export default function WorkerCalendar() {
     }
   };
 
-  // ✅ FIXED: persistent colors for multiple days
   const updateMarkedDates = (attendance) => {
     const marked = {};
-    Object.keys(attendance).forEach(date => {
+    Object.keys(attendance).forEach((date) => {
       if (attendance[date] === 'present') {
         marked[date] = {
           customStyles: {
             container: { backgroundColor: '#10B981' },
-            text: { color: '#FFFFFF', fontWeight: 'bold' }
-          }
+            text: { color: '#FFFFFF', fontWeight: 'bold' },
+          },
         };
       } else if (attendance[date] === 'absent') {
         marked[date] = {
           customStyles: {
             container: { backgroundColor: '#EF4444' },
-            text: { color: '#FFFFFF', fontWeight: 'bold' }
-          }
+            text: { color: '#FFFFFF', fontWeight: 'bold' },
+          },
         };
       }
     });
     setMarkedDates(marked);
   };
 
-  // ✅ FIXED: totals count all present days
   const calculateMonthlyTotal = () => {
-    const presentDays = Object.values(attendanceData).filter(status => status === 'present').length;
+    const presentDays = Object.values(attendanceData).filter((status) => status === 'present').length;
     setWorkDays(presentDays);
     setMonthlyTotal(presentDays * dailyRate);
   };
@@ -151,7 +149,7 @@ export default function WorkerCalendar() {
 
       const updatedAttendance = {
         ...attendanceData,
-        [selectedDate]: status
+        [selectedDate]: status,
       };
 
       const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
@@ -164,7 +162,7 @@ export default function WorkerCalendar() {
         month: currentMonth + 1,
         attendance: updatedAttendance,
         dailyRate: dailyRate,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const existingDoc = await getDoc(doc(db, 'attendance', attendanceId));
@@ -176,11 +174,13 @@ export default function WorkerCalendar() {
 
       setAttendanceData(updatedAttendance);
       updateMarkedDates(updatedAttendance);
-      setRefreshKey(prev => prev + 1);
+      setRefreshKey((prev) => prev + 1);
 
       Alert.alert(
-        'Success', 
-        `Marked ${workerData?.applicantName || workerData?.name || 'Worker'} as ${status} for ${new Date(selectedDate).toLocaleDateString()}`
+        'Success',
+        `Marked ${workerData?.applicantName || workerData?.name || 'Worker'} as ${status} for ${new Date(
+          selectedDate
+        ).toLocaleDateString()}`
       );
     } catch (error) {
       console.error('Error marking attendance:', error);
@@ -196,12 +196,23 @@ export default function WorkerCalendar() {
     setPaymentModalVisible(true);
   };
 
-  const handlePaymentSuccess = async (paymentData: any) => {
-    Alert.alert(
-      'Payment Initiated',
-      `Payment of ₹${paymentData.amount} has been initiated.`,
-      [{ text: 'OK' }]
-    );
+  // ✅ Restored your old payment success logic (UPI / external link etc.)
+  const handlePaymentSuccess = async (paymentData) => {
+    const { method, amount } = paymentData;
+
+    if (method === 'upi') {
+      const upiUrl = `upi://pay?pa=${workerData?.upiId || 'example@upi'}&pn=${workerData?.applicantName ||
+        workerData?.name}&am=${amount}&cu=INR`;
+      Linking.openURL(upiUrl).catch(() => Alert.alert('Error', 'Failed to open UPI app'));
+    } else if (method === 'cash') {
+      Alert.alert('Cash Payment', `Marked ₹${amount} as paid in cash.`);
+    } else if (method === 'bank') {
+      Alert.alert('Bank Transfer', `Please transfer ₹${amount} to worker's account.`);
+    } else {
+      Alert.alert('Payment', `Payment of ₹${amount} initiated.`);
+    }
+
+    setPaymentModalVisible(false);
   };
 
   if (loading) {
@@ -284,7 +295,7 @@ export default function WorkerCalendar() {
           </View>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.payButton, monthlyTotal === 0 && styles.payButtonDisabled]}
           onPress={handlePayment}
           disabled={monthlyTotal === 0}
@@ -310,7 +321,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     backgroundColor: '#2563EB',
   },
   backButton: { padding: 8, marginRight: 16 },
@@ -319,33 +332,66 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 14, color: '#E5E7EB', marginTop: 2 },
   content: { flex: 1 },
   calendarContainer: {
-    backgroundColor: '#FFFFFF', margin: 16, borderRadius: 12, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   attendanceActions: {
-    backgroundColor: '#FFFFFF', margin: 16, padding: 16, borderRadius: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1, shadowRadius: 3, elevation: 2,
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   selectedDateText: {
-    fontSize: 16, fontWeight: '600', color: '#111827',
-    marginBottom: 12, textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   actionButtons: { flexDirection: 'row', gap: 12 },
   presentButton: {
-    flex: 1, backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 8,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    flex: 1,
+    backgroundColor: '#10B981',
+    paddingVertical: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   absentButton: {
-    flex: 1, backgroundColor: '#EF4444', paddingVertical: 12, borderRadius: 8,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    flex: 1,
+    backgroundColor: '#EF4444',
+    paddingVertical: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   summaryCard: {
-    backgroundColor: '#FFFFFF', margin: 16, padding: 16, borderRadius: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1, shadowRadius: 3, elevation: 2,
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   summaryTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
@@ -355,9 +401,15 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 16, fontWeight: '600', color: '#111827' },
   totalAmount: { fontSize: 18, fontWeight: 'bold', color: '#16A34A' },
   payButton: {
-    backgroundColor: '#16A34A', marginHorizontal: 16, paddingVertical: 16,
-    borderRadius: 12, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 8, marginBottom: 16,
+    backgroundColor: '#16A34A',
+    marginHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
   },
   payButtonDisabled: { backgroundColor: '#9CA3AF' },
   payButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
