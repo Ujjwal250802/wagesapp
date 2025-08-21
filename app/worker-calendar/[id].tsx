@@ -225,29 +225,9 @@ export default function WorkerCalendar() {
       // Add payment record to Firestore
       await addDoc(collection(db, 'payments'), paymentRecord);
 
-      // Reset attendance data after payment
-      const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
-      await setDoc(doc(db, 'attendance', attendanceId), {
-        employerId: user.uid,
-        workerId: workerId,
-        workerName: workerData?.applicantName || workerData?.name || 'Unknown',
-        jobTitle: workerJobTitle,
-        year: currentYear,
-        month: currentMonth + 1,
-        attendance: {},
-        dailyRate: dailyRate,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-
-      // Reset local state
-      setAttendanceData({});
-      updateMarkedDates({});
-      setRefreshKey(prev => prev + 1);
-
       Alert.alert(
         'Payment Successful!',
-        `Payment of ₹${paymentData.amount} has been processed successfully and recorded. Attendance has been reset for new tracking.`,
+        `Payment of ₹${paymentData.amount} has been processed successfully and recorded.`,
         [
           {
             text: 'OK',
