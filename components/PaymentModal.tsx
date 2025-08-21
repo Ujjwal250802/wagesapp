@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, Alert } fro
 import { CreditCard, Smartphone, X, DollarSign } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { razorpayService, RazorpayOrderRequest } from '../services/RazorpayService';
+import { paymentService, PaymentRequest } from '../services/PaymentService';
 import { phonePeService } from '../services/PhonePeService';
 
 interface PaymentModalProps {
@@ -57,98 +57,70 @@ export default function PaymentModal({
 
   const handleRazorpayPayment = async (paymentAmount: number) => {
     try {
-      // First check if backend is available
-      const isServerHealthy = await razorpayService.checkServerHealth();
-      if (!isServerHealthy) {
-        Alert.alert(
-          'Server Error', 
-          'Payment server is not available. Please make sure the backend server is running on http://localhost:5000'
-        );
-        return;
-      }
-
-      // Create order on backend
-      const orderRequest: RazorpayOrderRequest = {
+      const paymentRequest: PaymentRequest = {
         amount: paymentAmount,
         currency: 'INR',
-        receipt: `receipt_${Date.now()}`,
-        notes: {
-          worker_name: workerName,
-          job_title: 'Daily Wage Work',
-          payment_type: 'worker_payment'
+        orderId: `ORDER_${Date.now()}`,
+        description: `Payment to ${workerName} for work completed`,
+        customerInfo: {
+          name: `Payment to ${workerName}`,
+          email: 'employer@rozgar.com',
+          phone: '9999999999'
         }
       };
 
-      console.log('Creating order for amount:', paymentAmount);
-      const orderResponse = await razorpayService.createOrder(orderRequest);
+      const result = await paymentService.processRazorpayPayment(paymentRequest);
       
-      if (!orderResponse.success || !orderResponse.order) {
-        Alert.alert('Order Creation Failed', orderResponse.error || 'Failed to create payment order');
-        return;
-      }
-
-      console.log('Order created successfully:', orderResponse.order);
-
-      // Process payment with the created order
-      const customerInfo = {
-        name: 'Employer',
-        email: 'employer@rozgar.com',
-        phone: '9999999999',
-        workerName: workerName
-      };
-
-      const result = await razorpayService.processPayment(orderResponse.order, customerInfo);
-      
-      if (result.success && result.verified) {
+      if (result.success) {
         onPaymentSuccess({
           paymentId: result.paymentId,
           orderId: result.orderId,
           signature: result.signature,
           method: 'razorpay',
           amount: paymentAmount,
-          status: 'completed',
-          verified: true
+          status: 'completed'
         });
         onClose();
       } else {
-        Alert.alert('Payment Failed', 'Payment could not be processed. Please try again.');
+        if (result.error !== 'Payment cancelled by user') {
+          Alert.alert('Payment Failed', result.error || 'Unknown error');
+        }
       }
     } catch (error) {
-      console.error('Razorpay payment error:', error);
-      Alert.alert('Payment Error', error.message || 'Failed to process payment');
+      Alert.alert('Payment Error', 'Failed to process Razorpay payment');
     }
   };
 
   const handlePhonePePayment = async (paymentAmount: number) => {
     try {
-      const paymentRequest = {
+      const paymentRequest: PaymentRequest = {
         amount: paymentAmount,
         currency: 'INR',
         orderId: `ORDER_${Date.now()}`,
         description: `Payment to ${workerName} for work completed`,
+        customerInfo: {
+          name: `Payment to ${workerName}`,
+          email: 'employer@rozgar.com',
+          phone: '9999999999'
+        }
       };
 
-      const result = await phonePeService.initiatePayment({
-        amount: paymentAmount,
-        merchantTransactionId: paymentRequest.orderId,
-        merchantUserId: 'user_123',
-        mobileNumber: '9999999999'
-      });
+      const result = await paymentService.processPhonePePayment(paymentRequest);
       
       if (result.success) {
         onPaymentSuccess({
-          paymentId: result.transactionId,
-          orderId: paymentRequest.orderId,
+          paymentId: result.paymentId,
+          orderId: result.orderId,
           method: 'phonepe',
           amount: paymentAmount,
           status: 'completed'
         });
         onClose();
       } else {
-        Alert.alert('Payment Failed', result.error || 'PhonePe payment failed');
+        Alert.alert('Payment Failed', result.error || 'Unknown error');
       }
     } catch (error) {
-      Alert.alert('Payment Error', 'Failed to process PhonePe payment');
+      Alert.alert('Payment Error', 'Failed to initialize PhonePe');
     }
   };
 
