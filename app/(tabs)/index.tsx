@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
 import { Search, MapPin, Clock, DollarSign, User, Mail, Phone, Briefcase, LogOut, TriangleAlert as AlertTriangle } from 'lucide-react-native';
