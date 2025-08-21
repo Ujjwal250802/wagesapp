@@ -61,10 +61,10 @@ export default function PaymentModal({
         amount: paymentAmount,
         currency: 'INR',
         orderId: `ORDER_${Date.now()}`,
-        description: `Payment for ${workerName}`,
+        description: `Payment to ${workerName} for work completed`,
         customerInfo: {
-          name: workerName,
-          email: 'worker@rozgar.com',
+          name: `Payment to ${workerName}`,
+          email: 'employer@rozgar.com',
           phone: '9999999999'
         }
       };
@@ -78,7 +78,7 @@ export default function PaymentModal({
           signature: result.signature,
           method: 'razorpay',
           amount: paymentAmount,
-          status: 'success'
+          status: 'completed'
         });
         onClose();
       } else {
@@ -93,40 +93,32 @@ export default function PaymentModal({
 
   const handlePhonePePayment = async (paymentAmount: number) => {
     try {
-      // Show processing state
-      Alert.alert(
-        'Processing Payment',
-        'Redirecting to PhonePe...',
-        [{ text: 'OK' }]
-      );
-
-      // Simulate PhonePe payment processing
-      setTimeout(async () => {
-        try {
-          const transactionId = `TXN_${Date.now()}`;
-          const result = await phonePeService.initiatePayment({
-            amount: paymentAmount,
-            merchantTransactionId: transactionId,
-            merchantUserId: `USER_${Date.now()}`,
-            mobileNumber: '9999999999'
-          });
-
-          if (result.success) {
-            onPaymentSuccess({
-              paymentId: result.transactionId,
-              orderId: `ORDER_${Date.now()}`,
-              method: 'phonepe',
-              amount: paymentAmount,
-              status: 'success'
-            });
-            onClose();
-          } else {
-            Alert.alert('Payment Failed', result.error || 'Unknown error');
-          }
-        } catch (error) {
-          Alert.alert('Payment Error', 'Failed to process PhonePe payment');
+      const paymentRequest: PaymentRequest = {
+        amount: paymentAmount,
+        currency: 'INR',
+        orderId: `ORDER_${Date.now()}`,
+        description: `Payment to ${workerName} for work completed`,
+        customerInfo: {
+          name: `Payment to ${workerName}`,
+          email: 'employer@rozgar.com',
+          phone: '9999999999'
         }
-      }, 1000);
+      };
+
+      const result = await paymentService.processPhonePePayment(paymentRequest);
+      
+      if (result.success) {
+        onPaymentSuccess({
+          paymentId: result.paymentId,
+          orderId: result.orderId,
+          method: 'phonepe',
+          amount: paymentAmount,
+          status: 'completed'
+        });
+        onClose();
+      } else {
+        Alert.alert('Payment Failed', result.error || 'Unknown error');
+      }
     } catch (error) {
       Alert.alert('Payment Error', 'Failed to initialize PhonePe');
     }

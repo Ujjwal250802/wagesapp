@@ -19,6 +19,12 @@ export default function PaymentHistory() {
     fetchPaymentHistory();
   }, []);
 
+  // Add refresh functionality
+  const refreshPaymentHistory = () => {
+    setLoading(true);
+    fetchPaymentHistory();
+  };
+
   const fetchPaymentHistory = async () => {
     try {
       const user = auth.currentUser;
@@ -159,6 +165,8 @@ export default function PaymentHistory() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.paymentsList}
           showsVerticalScrollIndicator={false}
+          onRefresh={refreshPaymentHistory}
+          refreshing={loading}
         />
       )}
     </View>

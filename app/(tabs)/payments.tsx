@@ -19,6 +19,12 @@ export default function Payments() {
     fetchPayments();
   }, []);
 
+  // Add refresh functionality
+  const refreshPayments = () => {
+    setLoading(true);
+    fetchPayments();
+  };
+
   const fetchPayments = async () => {
     try {
       const user = auth.currentUser;
@@ -147,6 +153,8 @@ export default function Payments() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.paymentsList}
           showsVerticalScrollIndicator={false}
+          onRefresh={refreshPayments}
+          refreshing={loading}
         />
       )}
     </View>

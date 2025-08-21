@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
-import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { ArrowLeft, DollarSign, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
 import PaymentModal from '../../components/PaymentModal';
@@ -197,11 +197,55 @@ export default function WorkerCalendar() {
   };
 
   const handlePaymentSuccess = async (paymentData: any) => {
-    Alert.alert(
-      'Payment Initiated',
-      `Payment of ₹${paymentData.amount} has been initiated.`,
-      [{ text: 'OK' }]
-    );
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Create payment record in Firestore
+      const paymentRecord = {
+        employerId: user.uid,
+        employerName: 'Organization', // You might want to fetch this from user profile
+        workerId: workerId,
+        workerName: workerData?.applicantName || workerData?.name || 'Worker',
+        jobTitle: workerJobTitle,
+        amount: paymentData.amount,
+        workDays: workDays,
+        workPeriod: `${new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+        dailyRate: dailyRate,
+        paymentMethod: paymentData.method,
+        paymentId: paymentData.paymentId,
+        razorpayPaymentId: paymentData.paymentId,
+        orderId: paymentData.orderId,
+        signature: paymentData.signature,
+        status: 'completed',
+        paidAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      };
+
+      // Add payment record to Firestore
+      await addDoc(collection(db, 'payments'), paymentRecord);
+
+      Alert.alert(
+        'Payment Successful!',
+        `Payment of ₹${paymentData.amount} has been processed successfully and recorded.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Optionally navigate back or refresh the screen
+              setPaymentModalVisible(false);
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      Alert.alert(
+        'Payment Processing Error',
+        'Payment was processed but failed to record. Please contact support.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   if (loading) {

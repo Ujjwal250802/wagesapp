@@ -29,14 +29,8 @@ class PaymentService {
       if (Platform.OS === 'web') {
         return await this.processRazorpayWeb(request);
       } else {
-        // For mobile, you would need to install react-native-razorpay
-        // For now, simulate success
-        return {
-          success: true,
-          paymentId: `rzp_${Date.now()}`,
-          orderId: request.orderId,
-          method: 'razorpay',
-        };
+        // For mobile, simulate Razorpay payment with proper flow
+        return await this.simulateRazorpayMobile(request);
       }
     } catch (error) {
       console.error('Razorpay payment error:', error);
@@ -50,17 +44,12 @@ class PaymentService {
 
   async processPhonePePayment(request: PaymentRequest): Promise<PaymentResponse> {
     try {
-      // For demo purposes, simulate PhonePe payment
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            success: true,
-            paymentId: `phonepe_${Date.now()}`,
-            orderId: request.orderId,
-            method: 'phonepe',
-          });
-        }, 2000);
-      });
+      if (Platform.OS === 'web') {
+        return await this.simulatePhonePePayment(request);
+      } else {
+        // For mobile, simulate PhonePe payment
+        return await this.simulatePhonePePayment(request);
+      }
     } catch (error) {
       console.error('PhonePe payment error:', error);
       return {
@@ -69,6 +58,57 @@ class PaymentService {
         method: 'phonepe',
       };
     }
+  }
+
+  private async simulateRazorpayMobile(request: PaymentRequest): Promise<PaymentResponse> {
+    return new Promise((resolve) => {
+      // Simulate payment processing time
+      setTimeout(() => {
+        // Simulate 95% success rate
+        const isSuccess = Math.random() > 0.05;
+        
+        if (isSuccess) {
+          resolve({
+            success: true,
+            paymentId: `rzp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            orderId: request.orderId,
+            signature: `sig_${Math.random().toString(36).substr(2, 16)}`,
+            method: 'razorpay',
+          });
+        } else {
+          resolve({
+            success: false,
+            error: 'Payment failed. Please try again.',
+            method: 'razorpay',
+          });
+        }
+      }, 2000);
+    });
+  }
+
+  private async simulatePhonePePayment(request: PaymentRequest): Promise<PaymentResponse> {
+    return new Promise((resolve) => {
+      // Simulate payment processing time
+      setTimeout(() => {
+        // Simulate 95% success rate
+        const isSuccess = Math.random() > 0.05;
+        
+        if (isSuccess) {
+          resolve({
+            success: true,
+            paymentId: `phonepe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            orderId: request.orderId,
+            method: 'phonepe',
+          });
+        } else {
+          resolve({
+            success: false,
+            error: 'Payment failed. Please try again.',
+            method: 'phonepe',
+          });
+        }
+      }, 2000);
+    });
   }
 
   private async processRazorpayWeb(request: PaymentRequest): Promise<PaymentResponse> {
