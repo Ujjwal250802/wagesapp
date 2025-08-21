@@ -4,11 +4,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
-import { ArrowLeft, DollarSign, Calendar as CalendarIcon, User, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
-import { Platform } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import { ArrowLeft, DollarSign, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
 import PaymentModal from '../../components/PaymentModal';
-import { paymentService, PaymentRequest } from '../../services/PaymentService';
 
 export default function WorkerCalendar() {
   const { id, jobTitle, salary } = useLocalSearchParams();
@@ -27,7 +24,6 @@ export default function WorkerCalendar() {
   const [loading, setLoading] = useState(true);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [forceUpdate, setForceUpdate] = useState(0);
 
   useEffect(() => {
     if (workerId) {
@@ -38,11 +34,10 @@ export default function WorkerCalendar() {
 
   useEffect(() => {
     calculateMonthlyTotal();
-  }, [attendanceData, currentMonth, currentYear, refreshKey, forceUpdate]);
+  }, [attendanceData, currentMonth, currentYear]);
 
   const fetchWorkerData = async () => {
     try {
-      // Get worker details from applications
       const applicationsQuery = query(
         collection(db, 'applications'), 
         where('applicantId', '==', workerId)
@@ -53,7 +48,6 @@ export default function WorkerCalendar() {
         const workerApp = applicationsSnapshot.docs[0].data();
         setWorkerData(workerApp);
       } else {
-        // Fallback: try to get from workers collection
         const workerDoc = await getDoc(doc(db, 'workers', workerId));
         if (workerDoc.exists()) {
           setWorkerData(workerDoc.data());
@@ -71,78 +65,63 @@ export default function WorkerCalendar() {
     try {
       const user = auth.currentUser;
       if (!user || !workerId) return;
-
-      // Ensure user is authenticated
-      if (!user.emailVerified) {
-        console.log('User email not verified');
-        return;
-      }
+      if (!user.emailVerified) return;
 
       const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
+      const attendanceDoc = await getDoc(doc(db, 'attendance', attendanceId));
       
-      try {
-        const attendanceDoc = await getDoc(doc(db, 'attendance', attendanceId));
-        
-        if (attendanceDoc.exists()) {
-          const data = attendanceDoc.data();
-          setAttendanceData(data.attendance || {});
-          updateMarkedDates(data.attendance || {});
-        } else {
-          // Create initial attendance document if it doesn't exist
-          const initialData = {
-            employerId: user.uid,
-            workerId: workerId,
-            workerName: workerData?.applicantName || workerData?.name || 'Unknown',
-            jobTitle: workerJobTitle,
-            year: currentYear,
-            month: currentMonth + 1,
-            attendance: {},
-            dailyRate: dailyRate,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          };
-          
-          await setDoc(doc(db, 'attendance', attendanceId), initialData);
-          setAttendanceData({});
-          updateMarkedDates({});
-        }
-      } catch (firestoreError) {
-        console.error('Firestore error:', firestoreError);
-        // Initialize with empty data if there's a permission error
+      if (attendanceDoc.exists()) {
+        const data = attendanceDoc.data();
+        setAttendanceData(data.attendance || {});
+        updateMarkedDates(data.attendance || {});
+      } else {
+        const initialData = {
+          employerId: user.uid,
+          workerId: workerId,
+          workerName: workerData?.applicantName || workerData?.name || 'Unknown',
+          jobTitle: workerJobTitle,
+          year: currentYear,
+          month: currentMonth + 1,
+          attendance: {},
+          dailyRate: dailyRate,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        await setDoc(doc(db, 'attendance', attendanceId), initialData);
         setAttendanceData({});
         updateMarkedDates({});
       }
     } catch (error) {
       console.error('Error loading attendance:', error);
-      // Don't show alert for permission errors during initial load
       setAttendanceData({});
       updateMarkedDates({});
     }
   };
 
+  // ✅ FIXED: persistent colors for multiple days
   const updateMarkedDates = (attendance) => {
     const marked = {};
-    
-    // Mark attendance dates with different colors
     Object.keys(attendance).forEach(date => {
       if (attendance[date] === 'present') {
         marked[date] = {
-          selected: true,
-          selectedColor: '#10B981',
-          selectedTextColor: '#FFFFFF'
+          customStyles: {
+            container: { backgroundColor: '#10B981' },
+            text: { color: '#FFFFFF', fontWeight: 'bold' }
+          }
         };
       } else if (attendance[date] === 'absent') {
         marked[date] = {
-          selected: true,
-          selectedColor: '#EF4444',
-          selectedTextColor: '#FFFFFF'
+          customStyles: {
+            container: { backgroundColor: '#EF4444' },
+            text: { color: '#FFFFFF', fontWeight: 'bold' }
+          }
         };
       }
     });
-
     setMarkedDates(marked);
   };
 
+  // ✅ FIXED: totals count all present days
   const calculateMonthlyTotal = () => {
     const presentDays = Object.values(attendanceData).filter(status => status === 'present').length;
     setWorkDays(presentDays);
@@ -155,7 +134,6 @@ export default function WorkerCalendar() {
       return;
     }
 
-    // Validate selected date is not in the future
     const today = new Date();
     const selected = new Date(selectedDate);
     if (selected > today) {
@@ -165,12 +143,7 @@ export default function WorkerCalendar() {
 
     try {
       const user = auth.currentUser;
-      if (!user) {
-        Alert.alert('Error', 'You must be logged in');
-        return;
-      }
-
-      // Check if user email is verified
+      if (!user) return;
       if (!user.emailVerified) {
         Alert.alert('Error', 'Please verify your email address first');
         return;
@@ -182,9 +155,7 @@ export default function WorkerCalendar() {
       };
 
       const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
-      
-      // Prepare attendance document data
-      const attendanceData = {
+      const attendanceDataToSave = {
         employerId: user.uid,
         workerId: workerId,
         workerName: workerData?.applicantName || workerData?.name || 'Unknown',
@@ -196,52 +167,24 @@ export default function WorkerCalendar() {
         updatedAt: new Date()
       };
 
-      // Add createdAt only if it's a new document
-      try {
-        const existingDoc = await getDoc(doc(db, 'attendance', attendanceId));
-        if (!existingDoc.exists()) {
-          attendanceData.createdAt = new Date();
-        }
-      } catch (error) {
-        // If we can't check, assume it's new
-        attendanceData.createdAt = new Date();
+      const existingDoc = await getDoc(doc(db, 'attendance', attendanceId));
+      if (!existingDoc.exists()) {
+        attendanceDataToSave.createdAt = new Date();
       }
 
-      // Create or update the attendance document
-      await setDoc(doc(db, 'attendance', attendanceId), attendanceData);
+      await setDoc(doc(db, 'attendance', attendanceId), attendanceDataToSave);
 
       setAttendanceData(updatedAttendance);
       updateMarkedDates(updatedAttendance);
-      calculateMonthlyTotal();
-      
-      // Force re-render of calendar and recalculate totals
       setRefreshKey(prev => prev + 1);
-      setForceUpdate(prev => prev + 1);
-      
+
       Alert.alert(
         'Success', 
         `Marked ${workerData?.applicantName || workerData?.name || 'Worker'} as ${status} for ${new Date(selectedDate).toLocaleDateString()}`
       );
     } catch (error) {
       console.error('Error marking attendance:', error);
-      
-      // Provide more specific error messages
-      if (error.code === 'permission-denied') {
-        Alert.alert(
-          'Permission Error', 
-          'You do not have permission to mark attendance. Please contact support.'
-        );
-      } else if (error.code === 'unauthenticated') {
-        Alert.alert(
-          'Authentication Error', 
-          'Please log out and log back in to continue.'
-        );
-      } else {
-        Alert.alert(
-          'Error', 
-          `Failed to mark attendance: ${error.message || 'Unknown error'}`
-        );
-      }
+      Alert.alert('Error', 'Failed to mark attendance');
     }
   };
 
@@ -250,120 +193,15 @@ export default function WorkerCalendar() {
       Alert.alert('Error', 'No amount to pay');
       return;
     }
-
     setPaymentModalVisible(true);
   };
 
   const handlePaymentSuccess = async (paymentData: any) => {
-    console.log('Payment successful:', paymentData);
-    
-    // Show success message immediately
     Alert.alert(
       'Payment Initiated',
-      `Payment of ₹${paymentData.amount} has been initiated via ${paymentData.method === 'razorpay' ? 'Razorpay' : 'PhonePe'}`,
+      `Payment of ₹${paymentData.amount} has been initiated.`,
       [{ text: 'OK' }]
     );
-
-    // Automatically process the payment since it's already completed
-    await processPayment(paymentData.paymentId, paymentData.method, paymentData.amount);
-  };
-
-  const processPayment = async (paymentId: string, method: string, amount: number) => {
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      // Check if user email is verified
-      if (!user.emailVerified) {
-        Alert.alert('Error', 'Please verify your email address first');
-        return;
-      }
-
-      console.log('Processing payment:', { paymentId, method, amount });
-
-      // Get organization name
-      let orgName = 'Organization';
-      try {
-        const orgDoc = await getDoc(doc(db, 'organizations', user.uid));
-        orgName = orgDoc.exists() ? orgDoc.data().organizationName : 'Organization';
-      } catch (error) {
-        console.log('Could not fetch organization name:', error);
-      }
-
-      // Create payment record
-      await addDoc(collection(db, 'payments'), {
-        employerId: user.uid,
-        employerName: orgName,
-        workerId: workerId,
-        workerName: workerData?.applicantName || workerData?.name,
-        jobTitle: workerJobTitle,
-        amount: amount,
-        workDays: workDays,
-        workPeriod: `${getMonthName(currentMonth)} ${currentYear}`,
-        paymentId: paymentId,
-        razorpayPaymentId: method === 'razorpay' ? paymentId : null,
-        phonePePaymentId: method === 'phonepe' ? paymentId : null,
-        paidAt: new Date(),
-        status: 'completed',
-        paymentMethod: method
-      });
-
-      console.log('Payment record created successfully');
-
-      // Reset attendance for next month
-      const attendanceId = `${user.uid}_${workerId}_${currentYear}_${currentMonth + 1}`;
-      
-      const resetAttendanceData = {
-        employerId: user.uid,
-        workerId: workerId,
-        workerName: workerData?.applicantName || workerData?.name || 'Unknown',
-        jobTitle: workerJobTitle,
-        year: currentYear,
-        month: currentMonth + 1,
-        attendance: {},
-        dailyRate: dailyRate,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      await setDoc(doc(db, 'attendance', attendanceId), resetAttendanceData);
-
-      console.log('Attendance reset successfully');
-
-      setAttendanceData({});
-      setMarkedDates({});
-      setMonthlyTotal(0);
-      setWorkDays(0);
-
-      Alert.alert(
-        'Payment Successful!', 
-        `₹${amount.toLocaleString()} has been successfully paid to ${workerData?.applicantName || workerData?.name} via ${method === 'razorpay' ? 'Razorpay' : 'PhonePe'}. Payment ID: ${paymentId}`,
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      
-      // Provide more specific error messages
-      if (error.code === 'permission-denied') {
-        Alert.alert(
-          'Permission Error', 
-          'You do not have permission to process payments. Please contact support.'
-        );
-      } else {
-        Alert.alert(
-          'Payment Error', 
-          `Failed to record payment: ${error.message || 'Unknown error'}. The payment was successful but could not be recorded. Please contact support with Payment ID: ${paymentId}`
-        );
-      }
-    }
-  };
-
-  const getMonthName = (monthIndex) => {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[monthIndex];
   };
 
   if (loading) {
@@ -377,10 +215,7 @@ export default function WorkerCalendar() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
@@ -400,12 +235,11 @@ export default function WorkerCalendar() {
               setCurrentYear(month.year);
             }}
             markedDates={markedDates}
+            markingType="custom"
             theme={{
               backgroundColor: '#FFFFFF',
               calendarBackground: '#FFFFFF',
               textSectionTitleColor: '#2563EB',
-              selectedDayBackgroundColor: '#2563EB',
-              selectedDayTextColor: '#FFFFFF',
               todayTextColor: '#2563EB',
               dayTextColor: '#374151',
               textDisabledColor: '#D1D5DB',
@@ -422,17 +256,11 @@ export default function WorkerCalendar() {
               Selected: {new Date(selectedDate).toLocaleDateString()}
             </Text>
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.presentButton}
-                onPress={() => markAttendance('present')}
-              >
+              <TouchableOpacity style={styles.presentButton} onPress={() => markAttendance('present')}>
                 <CheckCircle size={20} color="#FFFFFF" />
                 <Text style={styles.buttonText}>Present</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.absentButton}
-                onPress={() => markAttendance('absent')}
-              >
+              <TouchableOpacity style={styles.absentButton} onPress={() => markAttendance('absent')}>
                 <XCircle size={20} color="#FFFFFF" />
                 <Text style={styles.buttonText}>Absent</Text>
               </TouchableOpacity>
@@ -462,9 +290,7 @@ export default function WorkerCalendar() {
           disabled={monthlyTotal === 0}
         >
           <DollarSign size={20} color="#FFFFFF" />
-          <Text style={styles.payButtonText}>
-            Pay ₹{monthlyTotal.toLocaleString()}
-          </Text>
+          <Text style={styles.payButtonText}>Pay ₹{monthlyTotal.toLocaleString()}</Text>
         </TouchableOpacity>
 
         <PaymentModal
@@ -474,224 +300,66 @@ export default function WorkerCalendar() {
           workerName={workerData?.applicantName || workerData?.name || 'Worker'}
           onPaymentSuccess={handlePaymentSuccess}
         />
-
-        <View style={styles.legend}>
-          <Text style={styles.legendTitle}>Legend:</Text>
-          <View style={styles.legendItems}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#FCD34D' }]} />
-              <Text style={styles.legendText}>Joining Date</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.legendText}>Present</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#EF4444' }]} />
-              <Text style={styles.legendText}>Absent</Text>
-            </View>
-          </View>
-        </View>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20,
     backgroundColor: '#2563EB',
   },
-  backButton: {
-    padding: 8,
-    marginRight: 16,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#E5E7EB',
-    marginTop: 2,
-  },
-  content: {
-    flex: 1,
-  },
+  backButton: { padding: 8, marginRight: 16 },
+  headerInfo: { flex: 1 },
+  headerTitle: { fontSize: 20, fontWeight: '600', color: '#FFFFFF' },
+  headerSubtitle: { fontSize: 14, color: '#E5E7EB', marginTop: 2 },
+  content: { flex: 1 },
   calendarContainer: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#FFFFFF', margin: 16, borderRadius: 12, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
   attendanceActions: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: '#FFFFFF', margin: 16, padding: 16, borderRadius: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1, shadowRadius: 3, elevation: 2,
   },
   selectedDateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
-    textAlign: 'center',
+    fontSize: 16, fontWeight: '600', color: '#111827',
+    marginBottom: 12, textAlign: 'center',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  actionButtons: { flexDirection: 'row', gap: 12 },
   presentButton: {
-    flex: 1,
-    backgroundColor: '#10B981',
-    paddingVertical: 12,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    flex: 1, backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   absentButton: {
-    flex: 1,
-    backgroundColor: '#EF4444',
-    paddingVertical: 12,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    flex: 1, backgroundColor: '#EF4444', paddingVertical: 12, borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: '#FFFFFF', margin: 16, padding: 16, borderRadius: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1, shadowRadius: 3, elevation: 2,
   },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  summaryValue: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 12,
-    marginTop: 8,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  totalAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#16A34A',
-  },
+  summaryTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 12 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  summaryLabel: { fontSize: 14, color: '#6B7280' },
+  summaryValue: { fontSize: 14, color: '#374151', fontWeight: '500' },
+  totalRow: { borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 8 },
+  totalLabel: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  totalAmount: { fontSize: 18, fontWeight: 'bold', color: '#16A34A' },
   payButton: {
-    backgroundColor: '#16A34A',
-    marginHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 16,
+    backgroundColor: '#16A34A', marginHorizontal: 16, paddingVertical: 16,
+    borderRadius: 12, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 8, marginBottom: 16,
   },
-  payButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  payButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  legend: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  legendTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  legendItems: {
-    gap: 8,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-  },
-  legendText: {
-    fontSize: 14,
-    color: '#374151',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  payButtonDisabled: { backgroundColor: '#9CA3AF' },
+  payButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
