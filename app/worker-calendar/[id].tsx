@@ -27,6 +27,7 @@ export default function WorkerCalendar() {
   const [loading, setLoading] = useState(true);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   useEffect(() => {
     if (workerId) {
@@ -37,7 +38,7 @@ export default function WorkerCalendar() {
 
   useEffect(() => {
     calculateMonthlyTotal();
-  }, [attendanceData, currentMonth, currentYear, refreshKey]);
+  }, [attendanceData, currentMonth, currentYear, refreshKey, forceUpdate]);
 
   const fetchWorkerData = async () => {
     try {
@@ -122,30 +123,19 @@ export default function WorkerCalendar() {
   const updateMarkedDates = (attendance) => {
     const marked = {};
     
-    // Mark joining date (example: first day of current month for demo)
-    const joiningDate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
-    marked[joiningDate] = {
-      customStyles: {
-        container: { backgroundColor: '#FCD34D' },
-        text: { color: '#92400E', fontWeight: 'bold' }
-      }
-    };
-
-    // Mark attendance dates
+    // Mark attendance dates with different colors
     Object.keys(attendance).forEach(date => {
       if (attendance[date] === 'present') {
         marked[date] = {
-          customStyles: {
-            container: { backgroundColor: '#10B981' },
-            text: { color: '#FFFFFF', fontWeight: 'bold' }
-          }
+          selected: true,
+          selectedColor: '#10B981',
+          selectedTextColor: '#FFFFFF'
         };
       } else if (attendance[date] === 'absent') {
         marked[date] = {
-          customStyles: {
-            container: { backgroundColor: '#EF4444' },
-            text: { color: '#FFFFFF', fontWeight: 'bold' }
-          }
+          selected: true,
+          selectedColor: '#EF4444',
+          selectedTextColor: '#FFFFFF'
         };
       }
     });
@@ -222,9 +212,11 @@ export default function WorkerCalendar() {
 
       setAttendanceData(updatedAttendance);
       updateMarkedDates(updatedAttendance);
+      calculateMonthlyTotal();
       
-      // Force re-render of calendar
+      // Force re-render of calendar and recalculate totals
       setRefreshKey(prev => prev + 1);
+      setForceUpdate(prev => prev + 1);
       
       Alert.alert(
         'Success', 
@@ -406,9 +398,7 @@ export default function WorkerCalendar() {
             onMonthChange={(month) => {
               setCurrentMonth(month.month - 1);
               setCurrentYear(month.year);
-              setRefreshKey(prev => prev + 1);
             }}
-            markingType={'custom'}
             markedDates={markedDates}
             theme={{
               backgroundColor: '#FFFFFF',
