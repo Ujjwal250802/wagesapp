@@ -5,7 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase-config';
 import { router } from 'expo-router';
-import { Search, MapPin, Clock, DollarSign, User, Mail, Phone, Briefcase, LogOut, AlertTriangle } from 'lucide-react-native';
+import { Search, MapPin, Clock, DollarSign, User, Mail, Phone, Briefcase, LogOut, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
