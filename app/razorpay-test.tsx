@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, CreditCard, CheckCircle, XCircle, Loader } from 'lucide-react-native';
+import { ArrowLeft, CreditCard, CircleCheck as CheckCircle, Circle as XCircle, Loader } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { razorpayService } from '../services/RazorpayService';
 
