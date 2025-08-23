@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, ImageBackground, Dimensions } from 'react-native';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -10,6 +10,14 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../../components/ThemeToggle';
 import LanguageSelector from '../../components/LanguageSelector';
+import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import * as SplashScreen from 'expo-splash-screen';
+
+const { width, height } = Dimensions.get('window');
+
+// Prevent splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 
 const JOB_CATEGORIES = [
   'Electrician', 'Plumber', 'Mechanic', 'Cook', 'Peon', 
@@ -24,6 +32,25 @@ export default function MainScreen() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [userType, setUserType] = useState(null);
+
+  const [fontsLoaded, fontError] = useFonts({
+    'Inter-Regular': Inter_400Regular,
+    'Inter-SemiBold': Inter_600SemiBold,
+    'Inter-Bold': Inter_700Bold,
+    'Poppins-Medium': Poppins_500Medium,
+    'Poppins-SemiBold': Poppins_600SemiBold,
+    'Poppins-Bold': Poppins_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -217,23 +244,30 @@ export default function MainScreen() {
   if (userType === 'organization') {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerContent}>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>{t('jobApplications')}</Text>
-              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('manageApplications')}</Text>
-            </View>
-            <View style={styles.headerControls}>
-              <LanguageSelector />
-              <ThemeToggle />
+        <ImageBackground
+          source={{ uri: 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2' }}
+          style={styles.backgroundImage}
+          imageStyle={styles.backgroundImageStyle}
+        >
+          <View style={styles.overlay} />
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <View style={styles.headerContent}>
+                <Text style={[styles.headerTitle, { color: '#FFFFFF', fontFamily: 'Poppins-Bold' }]}>{t('jobApplications')}</Text>
+                <Text style={[styles.headerSubtitle, { color: 'rgba(255, 255, 255, 0.9)', fontFamily: 'Inter-Regular' }]}>{t('manageApplications')}</Text>
+              </View>
+              <View style={styles.headerControls}>
+                <LanguageSelector />
+                <ThemeToggle />
+              </View>
             </View>
           </View>
-        </View>
+        </ImageBackground>
 
         {applications.length === 0 ? (
           <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-            <Text style={[styles.emptyText, { color: colors.text }]}>{t('noApplicationsYet')}</Text>
-            <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('applicationsWillAppear')}</Text>
+            <Text style={[styles.emptyText, { color: colors.text, fontFamily: 'Poppins-SemiBold' }]}>{t('noApplicationsYet')}</Text>
+            <Text style={[styles.emptySubtext, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>{t('applicationsWillAppear')}</Text>
           </View>
         ) : (
           <FlatList
@@ -250,18 +284,25 @@ export default function MainScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface }]}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerContent}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('availableJobs')}</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{t('findPerfectJob')}</Text>
-          </View>
-          <View style={styles.headerControls}>
-            <LanguageSelector />
-            <ThemeToggle />
+      <ImageBackground
+        source={{ uri: 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2' }}
+        style={styles.backgroundImage}
+        imageStyle={styles.backgroundImageStyle}
+      >
+        <View style={styles.overlay} />
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerContent}>
+              <Text style={[styles.headerTitle, { color: '#FFFFFF', fontFamily: 'Poppins-Bold' }]}>{t('availableJobs')}</Text>
+              <Text style={[styles.headerSubtitle, { color: 'rgba(255, 255, 255, 0.9)', fontFamily: 'Inter-Regular' }]}>{t('findPerfectJob')}</Text>
+            </View>
+            <View style={styles.headerControls}>
+              <LanguageSelector />
+              <ThemeToggle />
+            </View>
           </View>
         </View>
-      </View>
+      </ImageBackground>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.categoriesContainer, { backgroundColor: colors.surface }]}>
         <TouchableOpacity 
@@ -277,6 +318,7 @@ export default function MainScreen() {
             { color: colors.textSecondary },
             selectedCategory === 'All' && { color: '#FFFFFF' }
           ]}>
+            fontFamily: 'Inter-SemiBold',
             {t('allJobs')}
           </Text>
         </TouchableOpacity>
@@ -295,6 +337,7 @@ export default function MainScreen() {
               { color: colors.textSecondary },
               selectedCategory === category && { color: '#FFFFFF' }
             ]}>
+              fontFamily: 'Inter-SemiBold',
               {t(category.toLowerCase().replace(/\s+/g, ''))}
             </Text>
           </TouchableOpacity>
@@ -303,8 +346,8 @@ export default function MainScreen() {
 
       {jobs.length === 0 ? (
         <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-          <Text style={[styles.emptyText, { color: colors.text }]}>{t('noJobsAvailable')}</Text>
-          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('checkBackLater')}</Text>
+          <Text style={[styles.emptyText, { color: colors.text, fontFamily: 'Poppins-SemiBold' }]}>{t('noJobsAvailable')}</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>{t('checkBackLater')}</Text>
         </View>
       ) : (
         <FlatList
@@ -323,7 +366,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  backgroundImage: {
+    width: '100%',
+    height: 200,
+  },
+  backgroundImageStyle: {
+    resizeMode: 'cover',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(37, 99, 235, 0.75)',
+  },
   header: {
+    flex: 1,
+    justifyContent: 'flex-end',
     padding: 20,
     paddingTop: 60,
   },
@@ -341,12 +397,20 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 17,
     marginTop: 4,
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   categoriesContainer: {
     paddingHorizontal: 20,
@@ -361,7 +425,6 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 14,
-    fontWeight: '500',
   },
   jobsList: {
     padding: 20,
@@ -405,7 +468,7 @@ const styles = StyleSheet.create({
   },
   jobTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
     color: '#111827',
   },
   salaryContainer: {
@@ -415,7 +478,7 @@ const styles = StyleSheet.create({
   },
   salary: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
     color: '#16A34A',
   },
   statusBadge: {
@@ -432,7 +495,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: 'Inter-SemiBold',
     color: '#6B7280',
     textTransform: 'capitalize',
   },
@@ -444,11 +507,13 @@ const styles = StyleSheet.create({
   },
   organizationName: {
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
     marginBottom: 8,
   },
   jobDescription: {
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#374151',
     lineHeight: 20,
     marginBottom: 12,
@@ -464,6 +529,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#374151',
   },
   jobFooter: {
@@ -483,6 +549,7 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 12,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
   timeContainer: {
@@ -492,10 +559,12 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
   appliedDate: {
     fontSize: 12,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
   loadingContainer: {
@@ -511,11 +580,11 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '600',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
     textAlign: 'center',
     lineHeight: 20,
   },
