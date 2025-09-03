@@ -1,4 +1,4 @@
-# WorkConnect - Daily Wage Job App
+# Rozgar - Daily Wage Job App
 
 ## Firebase Setup Instructions
 
