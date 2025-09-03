@@ -121,3 +121,15 @@ For mobile apps, you'll need to:
 - **Navigation**: Expo Router
 - **UI Components**: Custom components with Lucide icons
 - **Maps**: Expo Location and native map integration
+<img width="585" height="707" alt="Screenshot 2025-09-03 181121" src="https://github.com/user-attachments/assets/0ce0bb4a-2004-4afb-9a6b-c89330a90520" />
+
+
+https://github.com/user-attachments/assets/03ec9649-1a37-4895-9c1b-cf456687b5e9
+
+
+
+https://github.com/user-attachments/assets/0926c921-6f06-4ef1-aa8f-60aba34c3c38
+
+
+
+  
